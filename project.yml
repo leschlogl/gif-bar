@@ -1,0 +1,63 @@
+name: GiphyBar
+
+options:
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  configs:
+    Debug:
+      xcconfig: Config/Debug.xcconfig
+    Release:
+      xcconfig: Config/Release.xcconfig
+
+packages:
+  GiphyBarKit:
+    path: GiphyBarKit
+
+targets:
+  GiphyBar:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - "Info.plist"
+          - "*.entitlements"
+    dependencies:
+      - package: GiphyBarKit
+        product: Utilities
+      - package: GiphyBarKit
+        product: Models
+      - package: GiphyBarKit
+        product: DesignSystem
+      - package: GiphyBarKit
+        product: Networking
+      - package: GiphyBarKit
+        product: Persistence
+      - package: GiphyBarKit
+        product: Services
+      - package: GiphyBarKit
+        product: ViewModels
+      - package: GiphyBarKit
+        product: Views
+    scheme:
+      testTargets:
+        - GiphyBarUITests
+      gatherCoverageData: true
+
+  GiphyBarUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - GiphyBarUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.leschlogl.GiphyBarUITests
+    dependencies:
+      - target: GiphyBar

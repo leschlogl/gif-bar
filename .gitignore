@@ -1,0 +1,22 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# XcodeGen-generated project (regenerate with `xcodegen generate`)
+*.xcodeproj
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Secrets — never commit the real API key
+Config/Secrets.xcconfig
+
+# macOS
+.DS_Store
