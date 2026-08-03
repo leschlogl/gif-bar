@@ -1,6 +1,6 @@
 # GiphyBar
 
-A native macOS menu bar app for browsing, searching, favoriting, and sharing GIFs via the Giphy API. Built with Swift 6, SwiftUI, and Combine, targeting macOS 26 only. See `Giphy_MenuBar_macOS26_PRD.md` for the full product/technical spec.
+A native macOS menu bar app for browsing, searching, favoriting, and sharing GIFs via the Giphy API. Built with Swift 6, SwiftUI, and Combine, targeting macOS 26 only. See `docs/PRD.md` for the full product/technical spec, and `CLAUDE.md` for architecture/commands when working in this repo with Claude Code.
 
 ## Requirements
 
