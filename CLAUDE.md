@@ -51,3 +51,9 @@ Networking is hand-rolled against the Giphy REST API — the official Giphy SDK 
 `Config/Secrets.xcconfig` (gitignored) holds `GIPHY_API_KEY`, which is injected into `Info.plist` as `$(GIPHY_API_KEY)` at build time and read from `Bundle.main` at runtime — never hardcode the key in source.
 
 The PRD (`docs/PRD.md`) defines an incremental build order (project setup → design system → networking → trending → masonry layout → search → clipboard → favorites → testing → performance polish); each milestone should compile cleanly before starting the next.
+
+## Design decisions
+
+`docs/decisions/` holds decisions made ahead of their implementing milestone, so they're settled before the code is written. Read the relevant one before touching that area:
+
+- `docs/decisions/gif-handling.md` — which Giphy rendition to request for grid thumbnails vs. clipboard (always `original` for copy/paste), cache-by-URL reuse rules, why Favorites persists GIF IDs only (not full metadata — this supersedes the PRD's Favorites section), and the pagination/prefetch trigger for infinite scroll.
