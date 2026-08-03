@@ -1,15 +1,31 @@
+import DesignSystem
 import SwiftUI
+import ViewModels
 
 public struct RootView: View {
-    public init() {}
+    private let viewModel: GifBarViewModel
+
+    public init(viewModel: GifBarViewModel) {
+        self.viewModel = viewModel
+    }
 
     public var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 36))
-            Text("GIFBar")
-                .font(.headline)
+        VStack(spacing: 0) {
+            ToolbarView(viewModel: viewModel)
+            GifGridView(viewModel: viewModel)
         }
-        .frame(minWidth: 500, minHeight: 700)
+        .frame(width: DesignTokens.Layout.popoverSize.width, height: DesignTokens.Layout.popoverSize.height)
+        .background(PopoverBackground())
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.popover))
+        .overlay(alignment: .bottom) {
+            ToastOverlay(viewModel: viewModel)
+        }
+        .task {
+            await viewModel.onAppear()
+        }
     }
+}
+
+#Preview {
+    RootView(viewModel: .preview())
 }

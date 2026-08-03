@@ -48,6 +48,8 @@ Respect this graph — e.g. `Views` must never import `Networking` or `Services`
 
 Networking is hand-rolled against the Giphy REST API — the official Giphy SDK is intentionally not used. Expect `APIClient`, `Endpoint`, request building, and response decoding to live in `Networking`, with `Services` (e.g. a `GiphyService`) orchestrating `Networking` + `Persistence`.
 
+**Current status**: `DesignSystem`, `Models`, `Persistence`, `Services`, `ViewModels`, and `Views` implement the popover UI (PRD milestones 4–8: Trending, Masonry, Search, Clipboard, Favorites) behind `Services.MockGifProvider`, a `GifProviding` implementation backed by an in-memory dataset instead of real network calls. `Networking` is still an empty placeholder — the next milestone is building a real `GiphyService: GifProviding` and swapping it in at `App/GIFBarApp.swift`'s composition root, which should require no changes to `ViewModels`/`Views`. Because `ViewModels` cannot import `Persistence` directly, `Services.FavoritesService` wraps a `Persistence.FavoritesStore` and is what `GifBarViewModel` actually depends on.
+
 `Config/Secrets.xcconfig` (gitignored) holds `GIPHY_API_KEY`, which is injected into `Info.plist` as `$(GIPHY_API_KEY)` at build time and read from `Bundle.main` at runtime — never hardcode the key in source.
 
 The PRD (`docs/PRD.md`) defines an incremental build order (project setup → design system → networking → trending → masonry layout → search → clipboard → favorites → testing → performance polish); each milestone should compile cleanly before starting the next.

@@ -87,17 +87,43 @@ metadata). Trade-off: opening Favorites requires network access; if that's
 ever a problem, the fix is to cache the last-fetched batch response, not to
 go back to storing full metadata locally.
 
-Order is preserved as favorited (most-recently-favorited first, or insertion
-order — pick one when Persistence is implemented and document it here).
+Order is preserved as **most-recently-favorited-first**: `toggleFavorite`
+inserts newly-favorited IDs at index 0 of `GifBarViewModel.favoriteIDs`,
+persisted verbatim by `Persistence.UserDefaultsFavoritesStore`.
 
 ## Pagination & prefetch
 
-Every list-producing endpoint (Trending, Search, and the Favorites
-`ids`-batch lookup) is paginated using Giphy's `offset`/`limit` and reads
-`pagination.total_count` from the response to know when there's no more data.
+Every list-producing endpoint (Trending, Search) is paginated using Giphy's
+`offset`/`limit` and reads `pagination.total_count` from the response to know
+when there's no more data. The Favorites `ids`-batch lookup
+(`GifProviding.fetch(ids:)`) is the one exception: it's a bounded batch call
+with no `offset`/`limit` in its signature, since Giphy's own `ids`-lookup
+endpoint takes an ID list directly rather than a paged listing — chunk client-side
+into ≤50-ID batches if a favorites list ever exceeds that, rather than adding
+pagination parameters to the protocol.
 
 For smooth infinite scroll: trigger the next page fetch when the user
 scrolls within N items (e.g. last 10) of the currently-loaded end of the
 list, so the next page is already loading — ideally already arrived — by the
 time they reach the bottom, rather than waiting for them to hit the end and
-then showing a spinner.
+then showing a spinner. Implemented in `ViewModels.GifBarViewModel.loadNextPageIfNeeded(currentItem:)`,
+called from each card's `.onAppear` in `Views.GifGridView`; only active on the
+Trending tab, since Favorites has no pagination to trigger.
+
+## Mock provider (pre-Networking milestone)
+
+Until the Networking milestone lands, `Services.GifProviding` is implemented
+by `Services.MockGifProvider`: an 18-item in-memory dataset (matching the
+approved Figma design prototype's mock data) with real offset/limit slicing,
+case-insensitive title search, and injectable latency — not a test-only stub.
+It's wired into the app at `App/GIFBarApp.swift`'s composition root exactly
+where a real `GiphyService: GifProviding` will go later; `ViewModels` and
+`Views` only ever see the `GifProviding` protocol, so that swap should require
+no changes above the `Services` layer.
+
+`Services.ClipboardService`'s Copy URL currently synthesizes
+`https://giphy.com/gifs/<id>` (matching the design prototype's own mock
+convention) and Copy Binary writes a placeholder 1×1 GIF's bytes — both are
+temporary, mock-only implementations of "always use `original`" above, to be
+rewritten (not just re-pointed) once real GIF objects carry an actual
+`images.original.url` to fetch.
