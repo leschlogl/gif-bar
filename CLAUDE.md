@@ -59,3 +59,7 @@ The PRD (`docs/PRD.md`) defines an incremental build order (project setup → de
 `docs/decisions/` holds decisions made ahead of their implementing milestone, so they're settled before the code is written. Read the relevant one before touching that area:
 
 - `docs/decisions/gif-handling.md` — which Giphy rendition to request for grid thumbnails vs. clipboard (always `original` for copy/paste), cache-by-URL reuse rules, why Favorites persists GIF IDs only (not full metadata — this supersedes the PRD's Favorites section), and the pagination/prefetch trigger for infinite scroll.
+
+## What's next
+
+`docs/ROADMAP.md` has the full task breakdown for the remaining milestones (real Networking, testing, performance, accessibility) — concrete tasks in dependency order, each flagged for whether it's suitable to hand to a background agent versus needing the user present (this environment has no attached display, so anything visual needs the user to check locally). Start there when resuming work.
