@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "GiphyBarKit",
+    name: "GIFBarKit",
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "Utilities", targets: ["Utilities"]),

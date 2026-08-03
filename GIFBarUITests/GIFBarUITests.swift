@@ -1,6 +1,6 @@
 import XCTest
 
-final class GiphyBarUITests: XCTestCase {
+final class GIFBarUITests: XCTestCase {
     func testAppLaunches() {
         let app = XCUIApplication()
         app.launch()

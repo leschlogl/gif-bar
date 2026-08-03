@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-GiphyBar is a native macOS menu bar app (Swift 6, SwiftUI, Combine) for browsing, searching, favoriting, and sharing GIFs via the public Giphy REST API. It targets **macOS 26 only** — do not add compatibility shims for older macOS versions, and prefer the newest macOS 26 APIs over older equivalents. The full product/technical spec lives in `docs/PRD.md`; read it before implementing a new feature area.
+GIFBar is a native macOS menu bar app (Swift 6, SwiftUI, Combine) for browsing, searching, favoriting, and sharing GIFs via the public Giphy REST API. It targets **macOS 26 only** — do not add compatibility shims for older macOS versions, and prefer the newest macOS 26 APIs over older equivalents. The full product/technical spec lives in `docs/PRD.md`; read it before implementing a new feature area.
 
 ## Commands
 
@@ -14,24 +14,24 @@ cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig   # then set GIPHY_AP
 xcodegen generate
 ```
 
-`project.yml` is the source of truth for the Xcode project — **never hand-edit `GiphyBar.xcodeproj`**; edit `project.yml` and run `xcodegen generate` again. The `.xcodeproj` is gitignored.
+`project.yml` is the source of truth for the Xcode project — **never hand-edit `GIFBar.xcodeproj`**; edit `project.yml` and run `xcodegen generate` again. The `.xcodeproj` is gitignored.
 
 ```sh
-# Unit tests — fast, no app/simulator launch. Run these while iterating on GiphyBarKit.
-cd GiphyBarKit && swift test
+# Unit tests — fast, no app/simulator launch. Run these while iterating on GIFBarKit.
+cd GIFBarKit && swift test
 swift test --filter ServicesTests            # single test target
 swift test --filter ServicesTests/testFoo    # single test method
 
 # Full app build
-xcodebuild -project GiphyBar.xcodeproj -scheme GiphyBar build
+xcodebuild -project GIFBar.xcodeproj -scheme GIFBar build
 
 # UI tests (launches the built app)
-xcodebuild -project GiphyBar.xcodeproj -scheme GiphyBar test
+xcodebuild -project GIFBar.xcodeproj -scheme GIFBar test
 ```
 
 ## Architecture
 
-The `GiphyBar` Xcode target (`App/`) is a thin shell: just the `@main` `App` struct (`MenuBarExtra`, `.window` style — this is the SwiftUI-native stand-in for a popover), `Info.plist`, entitlements, and assets. **All business logic lives in the local Swift package `GiphyBarKit`**, split into one library target per module under `GiphyBarKit/Sources/`, each with its own test target under `GiphyBarKit/Tests/`. The app target links every module's product directly (see `project.yml`).
+The `GIFBar` Xcode target (`App/`) is a thin shell: just the `@main` `App` struct (`MenuBarExtra`, `.window` style — this is the SwiftUI-native stand-in for a popover), `Info.plist`, entitlements, and assets. **All business logic lives in the local Swift package `GIFBarKit`**, split into one library target per module under `GIFBarKit/Sources/`, each with its own test target under `GIFBarKit/Tests/`. The app target links every module's product directly (see `project.yml`).
 
 Dependency direction between modules (a module may only depend on what's listed):
 ```

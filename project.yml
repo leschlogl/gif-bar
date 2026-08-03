@@ -1,4 +1,4 @@
-name: GiphyBar
+name: GIFBar
 
 options:
   deploymentTarget:
@@ -17,11 +17,11 @@ settings:
       xcconfig: Config/Release.xcconfig
 
 packages:
-  GiphyBarKit:
-    path: GiphyBarKit
+  GIFBarKit:
+    path: GIFBarKit
 
 targets:
-  GiphyBar:
+  GIFBar:
     type: application
     platform: macOS
     sources:
@@ -30,34 +30,34 @@ targets:
           - "Info.plist"
           - "*.entitlements"
     dependencies:
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Utilities
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Models
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: DesignSystem
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Networking
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Persistence
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Services
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: ViewModels
-      - package: GiphyBarKit
+      - package: GIFBarKit
         product: Views
     scheme:
       testTargets:
-        - GiphyBarUITests
+        - GIFBarUITests
       gatherCoverageData: true
 
-  GiphyBarUITests:
+  GIFBarUITests:
     type: bundle.ui-testing
     platform: macOS
     sources:
-      - GiphyBarUITests
+      - GIFBarUITests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.leschlogl.GiphyBarUITests
+        PRODUCT_BUNDLE_IDENTIFIER: com.leschlogl.GIFBarUITests
     dependencies:
-      - target: GiphyBar
+      - target: GIFBar

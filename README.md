@@ -1,4 +1,4 @@
-# GiphyBar
+# GIFBar
 
 A native macOS menu bar app for browsing, searching, favoriting, and sharing GIFs via the Giphy API. Built with Swift 6, SwiftUI, and Combine, targeting macOS 26 only. See `docs/PRD.md` for the full product/technical spec, and `CLAUDE.md` for architecture/commands when working in this repo with Claude Code.
 
@@ -12,47 +12,47 @@ A native macOS menu bar app for browsing, searching, favoriting, and sharing GIF
 ## Setup
 
 ```sh
-git clone <repo-url> && cd giphy-bar
+git clone <repo-url> && cd gif-bar
 cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig
 # edit Config/Secrets.xcconfig and set GIPHY_API_KEY
 xcodegen generate
-open GiphyBar.xcodeproj
+open GIFBar.xcodeproj
 ```
 
-`GiphyBar.xcodeproj` is generated from `project.yml` and is gitignored — regenerate it with `xcodegen generate` any time `project.yml` changes.
+`GIFBar.xcodeproj` is generated from `project.yml` and is gitignored — regenerate it with `xcodegen generate` any time `project.yml` changes.
 
 ## Project structure
 
 ```
-project.yml              XcodeGen project spec — edit this, not the .xcodeproj
-Config/                   Shared build settings (xcconfig)
-App/                      Thin app shell: entry point, Info.plist, entitlements, assets
-GiphyBarKit/              Local Swift package holding all business logic, split into
-                          independently testable modules:
+project.yml           XcodeGen project spec — edit this, not the .xcodeproj
+Config/               Shared build settings (xcconfig)
+App/                  Thin app shell: entry point, Info.plist, entitlements, assets
+GIFBarKit/            Local Swift package holding all business logic, split into
+                      independently testable modules:
   Sources/
-    Utilities             Cross-cutting helpers with no other internal dependencies
-    Models                Plain data types shared across modules
-    DesignSystem          Colors, typography, spacing, reusable SwiftUI components
-    Networking             APIClient, Endpoint, request/response handling
-    Persistence            Local favorites storage
-    Services               GiphyService and friends — orchestrate Networking + Persistence
-    ViewModels             MVVM view models, depend on Services
-    Views                  SwiftUI views, depend on ViewModels + DesignSystem
-  Tests/                  Unit tests per module
-GiphyBarUITests/          XCUITest target driving the built app
+    Utilities         Cross-cutting helpers with no other internal dependencies
+    Models            Plain data types shared across modules
+    DesignSystem      Colors, typography, spacing, reusable SwiftUI components
+    Networking        APIClient, Endpoint, request/response handling
+    Persistence       Local favorites storage
+    Services          GiphyService and friends — orchestrate Networking + Persistence
+    ViewModels        MVVM view models, depend on Services
+    Views             SwiftUI views, depend on ViewModels + DesignSystem
+  Tests/              Unit tests per module
+GIFBarUITests/        XCUITest target driving the built app
 ```
 
-The app target depends on `GiphyBarKit`'s module libraries rather than containing business logic directly, so views, view models, networking, and persistence can each be built and tested in isolation.
+The app target depends on `GIFBarKit`'s module libraries rather than containing business logic directly, so views, view models, networking, and persistence can each be built and tested in isolation.
 
 ## Building & testing
 
 ```sh
 # Fast unit tests, no simulator/app launch needed
-cd GiphyBarKit && swift test
+cd GIFBarKit && swift test
 
 # Full app build
-xcodebuild -project GiphyBar.xcodeproj -scheme GiphyBar build
+xcodebuild -project GIFBar.xcodeproj -scheme GIFBar build
 
 # UI tests
-xcodebuild -project GiphyBar.xcodeproj -scheme GiphyBar test
+xcodebuild -project GIFBar.xcodeproj -scheme GIFBar test
 ```

@@ -7,7 +7,7 @@ public struct RootView: View {
         VStack(spacing: 12) {
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: 36))
-            Text("GiphyBar")
+            Text("GIFBar")
                 .font(.headline)
         }
         .frame(minWidth: 500, minHeight: 700)
