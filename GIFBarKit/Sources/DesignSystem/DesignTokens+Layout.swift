@@ -15,7 +15,6 @@ extension DesignTokens {
         public static let favoriteIconSize: CGFloat = 14
         public static let copyPillHeight: CGFloat = 30
         public static let gridColumns = 2
-        public static let masonryScrimHeight: CGFloat = 70
-        public static let focusRingWidth: CGFloat = 3
+        public static let masonryScrimHeight: CGFloat = 100
     }
 }

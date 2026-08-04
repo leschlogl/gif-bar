@@ -7,7 +7,6 @@ public struct GIFCard: View {
     private let cardHeight: CGFloat
     private let isFavorited: Bool
     private let isSelected: Bool
-    private let isCopied: Bool
     private let onToggleFavorite: () -> Void
     private let onSelect: () -> Void
     private let onCopyGif: () -> Void
@@ -22,7 +21,6 @@ public struct GIFCard: View {
         cardHeight: CGFloat,
         isFavorited: Bool,
         isSelected: Bool,
-        isCopied: Bool,
         onToggleFavorite: @escaping () -> Void,
         onSelect: @escaping () -> Void,
         onCopyGif: @escaping () -> Void,
@@ -33,7 +31,6 @@ public struct GIFCard: View {
         self.cardHeight = cardHeight
         self.isFavorited = isFavorited
         self.isSelected = isSelected
-        self.isCopied = isCopied
         self.onToggleFavorite = onToggleFavorite
         self.onSelect = onSelect
         self.onCopyGif = onCopyGif
@@ -49,13 +46,10 @@ public struct GIFCard: View {
         }
         .frame(height: cardHeight)
         .focusable()
+        .focusEffectDisabled()
         .focused($isFocused)
         .onKeyPress(.return) { onSelect(); return .handled }
         .onKeyPress(.space) { onSelect(); return .handled }
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.card)
-                .stroke(DesignTokens.Color.accent, lineWidth: isFocused ? DesignTokens.Layout.focusRingWidth : 0)
-        )
         .onHover { isHovering = $0 }
         .accessibilityLabel("\(gif.title) GIF")
         .contextMenu {
@@ -77,7 +71,7 @@ public struct GIFCard: View {
 
                 if isSelected {
                     LinearGradient(
-                        colors: [.clear, .black.opacity(0.6)],
+                        colors: [.clear, DesignTokens.Color.selectionScrim],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -88,19 +82,11 @@ public struct GIFCard: View {
                         .padding(.bottom, DesignTokens.Spacing.pillInset)
                 }
 
-                if isCopied {
-                    RoundedRectangle(cornerRadius: DesignTokens.Radius.card)
-                        .fill(DesignTokens.Color.copyFlashOverlay)
-                }
             }
             .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card))
         }
         .buttonStyle(.plain)
-        .scaleEffect(isHovering ? DesignTokens.AnimationDuration.hoverScale : 1)
-        .shadow(color: isHovering ? .black.opacity(0.4) : .clear, radius: isHovering ? 16 : 0, y: isHovering ? 6 : 0)
-        .animation(DesignTokens.Animations.hover, value: isHovering)
         .animation(DesignTokens.Animations.traySlide, value: isSelected)
-        .animation(isCopied ? DesignTokens.Animations.copyFlash : nil, value: isCopied)
     }
 
     private var favoriteButton: some View {

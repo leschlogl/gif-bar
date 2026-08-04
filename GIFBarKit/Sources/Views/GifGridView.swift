@@ -47,7 +47,6 @@ struct GifGridView: View {
                         cardHeight: cardHeight,
                         isFavorited: viewModel.favoriteIDs.contains(gif.id),
                         isSelected: viewModel.selectedGifID == gif.id,
-                        isCopied: viewModel.copiedGifID == gif.id,
                         onToggleFavorite: { Task { await viewModel.toggleFavorite(gif) } },
                         onSelect: { viewModel.selectCard(gif) },
                         onCopyGif: { Task { await viewModel.copyGif(gif) } },

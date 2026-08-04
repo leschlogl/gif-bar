@@ -40,6 +40,8 @@ extension DesignTokens {
         public static let favoriteBadgeRing = SwiftUI.Color.white.opacity(0.14)
         public static let favoriteInactive = SwiftUI.Color.white.opacity(0.7)
 
-        public static let copyFlashOverlay = SwiftUI.Color.white
+        /// Bottom-up scrim behind a selected card's action tray, so the pills stay
+        /// legible over bright/busy GIF content.
+        public static let selectionScrim = SwiftUI.Color.black.opacity(0.92)
     }
 }

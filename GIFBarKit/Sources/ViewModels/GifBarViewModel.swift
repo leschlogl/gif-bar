@@ -13,7 +13,6 @@ public final class GifBarViewModel {
     }
 
     private static let pageSize = 8
-    private static let copyFlashDuration: Duration = .milliseconds(900)
     private static let toastDismissDelay: Duration = .milliseconds(1400)
 
     public private(set) var gifs: [Gif] = []
@@ -36,7 +35,6 @@ public final class GifBarViewModel {
     /// Ordered, most-recently-favorited-first.
     public private(set) var favoriteIDs: [String] = []
     public var selectedGifID: String?
-    public private(set) var copiedGifID: String?
     public private(set) var toast: ToastMessage?
     public private(set) var isLaunchAtLoginEnabled: Bool
 
@@ -62,7 +60,6 @@ public final class GifBarViewModel {
     private let searchQuerySubject = PassthroughSubject<String, Never>()
     private var searchCancellable: AnyCancellable?
     private var loadTask: Task<Void, Never>?
-    private var copyFlashTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
 
     public init(
@@ -129,12 +126,12 @@ public final class GifBarViewModel {
 
     public func copyGif(_ gif: Gif) async {
         guard (try? await clipboard.copyBinary(gifID: gif.id)) != nil else { return }
-        handleCopySuccess(gifID: gif.id, toast: .gifCopied)
+        handleCopySuccess(toast: .gifCopied)
     }
 
     public func copyURL(_ gif: Gif) async {
         guard (try? await clipboard.copyURL(gifID: gif.id)) != nil else { return }
-        handleCopySuccess(gifID: gif.id, toast: .linkCopied)
+        handleCopySuccess(toast: .linkCopied)
     }
 
     /// Fetches a grid thumbnail's raw bytes for `AnimatedGIFView` — the `Views` layer
@@ -250,17 +247,9 @@ public final class GifBarViewModel {
 
     // MARK: - Copy / favorite feedback
 
-    private func handleCopySuccess(gifID: String, toast: ToastMessage.Kind) {
+    private func handleCopySuccess(toast: ToastMessage.Kind) {
         selectedGifID = nil
-        copiedGifID = gifID
         showToast(toast)
-
-        copyFlashTask?.cancel()
-        copyFlashTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.copyFlashDuration)
-            guard !Task.isCancelled, let self, self.copiedGifID == gifID else { return }
-            self.copiedGifID = nil
-        }
     }
 
     private func showToast(_ kind: ToastMessage.Kind) {
