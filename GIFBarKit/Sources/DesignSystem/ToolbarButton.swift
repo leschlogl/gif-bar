@@ -17,7 +17,7 @@ public struct ToolbarButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(DesignTokens.Color.textPrimary)
-                .frame(width: DesignTokens.Layout.searchButtonSize, height: DesignTokens.Layout.searchButtonSize)
+                .frame(width: DesignTokens.Layout.toolbarIconButtonSize, height: DesignTokens.Layout.toolbarIconButtonSize)
                 .background(
                     Circle().fill(isHovering ? DesignTokens.Color.searchButtonFillHover : DesignTokens.Color.searchButtonFill)
                 )

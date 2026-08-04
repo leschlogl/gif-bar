@@ -132,14 +132,54 @@ private final class FakeClipboardCopying: ClipboardCopying, @unchecked Sendable 
     }
 }
 
+private final class FakeLaunchAtLoginManaging: LaunchAtLoginManaging, @unchecked Sendable {
+    private(set) var isEnabled: Bool
+    var shouldFail = false
+    private(set) var setEnabledCallCount = 0
+
+    init(isEnabled: Bool = false) {
+        self.isEnabled = isEnabled
+    }
+
+    func setEnabled(_ enabled: Bool) throws {
+        setEnabledCallCount += 1
+        guard !shouldFail else {
+            struct SomeError: Error {}
+            throw SomeError()
+        }
+        isEnabled = enabled
+    }
+}
+
+private final class FakeAppLifecycleControlling: AppLifecycleControlling, @unchecked Sendable {
+    private(set) var showAboutPanelCallCount = 0
+    private(set) var terminateCallCount = 0
+
+    func showAboutPanel() {
+        showAboutPanelCallCount += 1
+    }
+
+    func terminate() {
+        terminateCallCount += 1
+    }
+}
+
 @MainActor
 final class GifBarViewModelTests: XCTestCase {
     private func makeViewModel(
         provider: GifProviding = MockGifProvider(latency: .zero),
         clipboard: ClipboardCopying = FakeClipboardCopying(),
-        favorites: FakeFavoritesManaging = FakeFavoritesManaging()
+        favorites: FakeFavoritesManaging = FakeFavoritesManaging(),
+        launchAtLogin: FakeLaunchAtLoginManaging = FakeLaunchAtLoginManaging(),
+        appLifecycle: FakeAppLifecycleControlling = FakeAppLifecycleControlling()
     ) -> GifBarViewModel {
-        GifBarViewModel(provider: provider, clipboard: clipboard, favorites: favorites)
+        GifBarViewModel(
+            provider: provider,
+            clipboard: clipboard,
+            favorites: favorites,
+            launchAtLogin: launchAtLogin,
+            appLifecycle: appLifecycle
+        )
     }
 
     private func waitForDebounce() async throws {
@@ -329,5 +369,52 @@ final class GifBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(spy.searchCallCount, searchCallsBeforeQuery, "favorites search must not hit the provider")
         XCTAssertEqual(viewModel.gifs.map(\.id), ["7"])
+    }
+
+    func testToggleLaunchAtLoginEnablesAndReflectsState() {
+        let launchAtLogin = FakeLaunchAtLoginManaging(isEnabled: false)
+        let viewModel = makeViewModel(launchAtLogin: launchAtLogin)
+        XCTAssertFalse(viewModel.isLaunchAtLoginEnabled)
+
+        viewModel.toggleLaunchAtLogin()
+
+        XCTAssertTrue(viewModel.isLaunchAtLoginEnabled)
+        XCTAssertTrue(launchAtLogin.isEnabled)
+        XCTAssertEqual(launchAtLogin.setEnabledCallCount, 1)
+
+        viewModel.toggleLaunchAtLogin()
+
+        XCTAssertFalse(viewModel.isLaunchAtLoginEnabled)
+        XCTAssertEqual(launchAtLogin.setEnabledCallCount, 2)
+    }
+
+    func testToggleLaunchAtLoginLeavesStateUnchangedOnFailure() {
+        let launchAtLogin = FakeLaunchAtLoginManaging(isEnabled: false)
+        launchAtLogin.shouldFail = true
+        let viewModel = makeViewModel(launchAtLogin: launchAtLogin)
+
+        viewModel.toggleLaunchAtLogin()
+
+        XCTAssertFalse(viewModel.isLaunchAtLoginEnabled)
+        XCTAssertFalse(launchAtLogin.isEnabled)
+        XCTAssertEqual(launchAtLogin.setEnabledCallCount, 1)
+    }
+
+    func testShowAboutPanelCallsThroughToAppLifecycle() {
+        let appLifecycle = FakeAppLifecycleControlling()
+        let viewModel = makeViewModel(appLifecycle: appLifecycle)
+
+        viewModel.showAboutPanel()
+
+        XCTAssertEqual(appLifecycle.showAboutPanelCallCount, 1)
+    }
+
+    func testQuitAppCallsThroughToAppLifecycle() {
+        let appLifecycle = FakeAppLifecycleControlling()
+        let viewModel = makeViewModel(appLifecycle: appLifecycle)
+
+        viewModel.quitApp()
+
+        XCTAssertEqual(appLifecycle.terminateCallCount, 1)
     }
 }

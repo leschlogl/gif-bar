@@ -19,7 +19,6 @@ extension DesignTokens {
         public static let textPrimary = SwiftUI.Color(hex: 0xF5F5F7)
         public static let textSecondary = SwiftUI.Color(hex: 0x98989D)
         public static let textTertiary = SwiftUI.Color(hex: 0x636366)
-        public static let tabInactive = SwiftUI.Color(hex: 0x8E8E93)
 
         public static let cardPlaceholderA = SwiftUI.Color(hex: 0x3A3A3C)
         public static let cardPlaceholderB = SwiftUI.Color(hex: 0x333335)

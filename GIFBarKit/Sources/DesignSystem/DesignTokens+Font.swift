@@ -2,8 +2,6 @@ import SwiftUI
 
 extension DesignTokens {
     public enum Font {
-        public static let title = SwiftUI.Font.system(size: 19, weight: .bold)
-        public static let tabLabel = SwiftUI.Font.system(size: 13, weight: .semibold)
         public static let searchField = SwiftUI.Font.system(size: 14)
         public static let pillLabel = SwiftUI.Font.system(size: 11, weight: .semibold)
         public static let toast = SwiftUI.Font.system(size: 12.5, weight: .medium)

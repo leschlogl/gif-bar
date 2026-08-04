@@ -6,35 +6,31 @@ struct ToolbarView: View {
     @Bindable var viewModel: GifBarViewModel
 
     var body: some View {
-        Group {
-            if viewModel.isSearchFieldOpen {
-                SearchBar(query: $viewModel.searchQuery, onCancel: { viewModel.closeSearch() })
-            } else {
-                defaultRow
+        HStack(spacing: DesignTokens.Spacing.toolbarItemGap) {
+            TextField("Search GIFs", text: $viewModel.searchQuery)
+                .textFieldStyle(.plain)
+                .font(DesignTokens.Font.searchField)
+                .foregroundStyle(DesignTokens.Color.textPrimary)
+                .padding(.horizontal, 12)
+                .frame(height: DesignTokens.Layout.searchFieldHeight)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignTokens.Radius.searchField)
+                        .fill(DesignTokens.Color.searchFieldFill)
+                )
+                .accessibilityLabel("Search GIFs")
+
+            FavoritesToggleButton(isActive: viewModel.tab == .favorites) {
+                viewModel.selectTab(viewModel.tab == .favorites ? .trending : .favorites)
             }
+
+            SettingsMenu(viewModel: viewModel)
         }
+        .padding(.horizontal, DesignTokens.Spacing.contentPaddingSides)
         .frame(height: DesignTokens.Layout.toolbarHeight)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(DesignTokens.Color.toolbarBorder)
                 .frame(height: 1)
         }
-    }
-
-    private var defaultRow: some View {
-        HStack(spacing: DesignTokens.Spacing.tabGap) {
-            Text("GIFs")
-                .font(DesignTokens.Font.title)
-                .foregroundStyle(DesignTokens.Color.textPrimary)
-
-            TabBar(selected: viewModel.tab, onSelect: { viewModel.selectTab($0) })
-
-            Spacer()
-
-            ToolbarButton(systemImage: "magnifyingglass", accessibilityLabel: "Search") {
-                viewModel.openSearch()
-            }
-        }
-        .padding(.horizontal, DesignTokens.Spacing.contentPaddingSides)
     }
 }

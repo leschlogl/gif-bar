@@ -33,12 +33,12 @@ public final class GifBarViewModel {
             searchQuerySubject.send(searchQuery)
         }
     }
-    public var isSearchFieldOpen = false
     /// Ordered, most-recently-favorited-first.
     public private(set) var favoriteIDs: [String] = []
     public var selectedGifID: String?
     public private(set) var copiedGifID: String?
     public private(set) var toast: ToastMessage?
+    public private(set) var isLaunchAtLoginEnabled: Bool
 
     public var isErrorState: Bool { !isLoading && lastLoadFailed }
     public var isFavoritesEmpty: Bool { tab == .favorites && !isLoading && !isErrorState && favoriteIDs.isEmpty }
@@ -49,6 +49,8 @@ public final class GifBarViewModel {
     private let clipboard: ClipboardCopying
     private let favorites: FavoritesManaging
     private let imageLoader: ImageDataLoading
+    private let launchAtLogin: LaunchAtLoginManaging
+    private let appLifecycle: AppLifecycleControlling
 
     private var offset = 0
     private var lastLoadFailed = false
@@ -67,12 +69,17 @@ public final class GifBarViewModel {
         provider: GifProviding,
         clipboard: ClipboardCopying,
         favorites: FavoritesManaging,
-        imageLoader: ImageDataLoading = UnavailableImageDataLoading()
+        imageLoader: ImageDataLoading = UnavailableImageDataLoading(),
+        launchAtLogin: LaunchAtLoginManaging = SMAppServiceLaunchAtLogin(),
+        appLifecycle: AppLifecycleControlling = NSApplicationLifecycleController()
     ) {
         self.provider = provider
         self.clipboard = clipboard
         self.favorites = favorites
         self.imageLoader = imageLoader
+        self.launchAtLogin = launchAtLogin
+        self.appLifecycle = appLifecycle
+        self.isLaunchAtLoginEnabled = launchAtLogin.isEnabled
 
         searchCancellable = searchQuerySubject
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
@@ -90,16 +97,6 @@ public final class GifBarViewModel {
 
     public func selectTab(_ newTab: Tab) {
         tab = newTab
-    }
-
-    public func openSearch() {
-        isSearchFieldOpen = true
-    }
-
-    public func closeSearch() {
-        isSearchFieldOpen = false
-        searchQuery = ""
-        reloadNow()
     }
 
     public func retryLoad() {
@@ -144,6 +141,24 @@ public final class GifBarViewModel {
     /// can't import `Networking`/`Services` directly, so it calls through here instead.
     public func loadImageData(for url: URL) async throws -> Data {
         try await imageLoader.data(for: url)
+    }
+
+    public func toggleLaunchAtLogin() {
+        do {
+            try launchAtLogin.setEnabled(!isLaunchAtLoginEnabled)
+            isLaunchAtLoginEnabled = launchAtLogin.isEnabled
+        } catch {
+            // Leave state unchanged on failure — matches the silent-failure style
+            // already used by copyGif/copyURL for this class of non-critical action.
+        }
+    }
+
+    public func showAboutPanel() {
+        appLifecycle.showAboutPanel()
+    }
+
+    public func quitApp() {
+        appLifecycle.terminate()
     }
 
     // MARK: - Loading
