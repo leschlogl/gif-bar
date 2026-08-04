@@ -66,6 +66,47 @@ private final class FlakyGifProviding: GifProviding, @unchecked Sendable {
     }
 }
 
+private actor Gate {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func open() {
+        isOpen = true
+        waiters.forEach { $0.resume() }
+        waiters.removeAll()
+    }
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+}
+
+/// Delays whichever `trending(offset:limit:)` call matches `gatedOffset` until `gate` is
+/// opened, so tests can force two loads to overlap deterministically.
+private final class GatedGifProviding: GifProviding, @unchecked Sendable {
+    private let wrapped: GifProviding
+    let gate = Gate()
+    var gatedOffset: Int?
+
+    init(wrapping: GifProviding) {
+        self.wrapped = wrapping
+    }
+
+    func trending(offset: Int, limit: Int) async throws -> GifPage {
+        if offset == gatedOffset { await gate.wait() }
+        return try await wrapped.trending(offset: offset, limit: limit)
+    }
+
+    func search(query: String, offset: Int, limit: Int) async throws -> GifPage {
+        try await wrapped.search(query: query, offset: offset, limit: limit)
+    }
+
+    func fetch(ids: [String]) async throws -> [Gif] {
+        try await wrapped.fetch(ids: ids)
+    }
+}
+
 private final class FakeFavoritesManaging: FavoritesManaging, @unchecked Sendable {
     private(set) var savedIDs: [String] = []
     var initialIDs: [String] = []
@@ -214,6 +255,48 @@ final class GifBarViewModelTests: XCTestCase {
         try await waitForBackgroundTask()
         XCTAssertEqual(viewModel.gifs.count, 18)
         XCTAssertFalse(viewModel.hasMore)
+    }
+
+    func testLoadNextPageIfNeededOnlyTriggersForTheLastItem() async throws {
+        let spy = SpyGifProviding(wrapping: MockGifProvider(latency: .zero))
+        let viewModel = makeViewModel(provider: spy)
+        await viewModel.onAppear()
+        XCTAssertEqual(viewModel.gifs.count, 8)
+
+        let callsBefore = spy.trendingCallCount
+        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs[viewModel.gifs.count - 2])
+        try await waitForBackgroundTask()
+
+        XCTAssertEqual(spy.trendingCallCount, callsBefore, "should only prefetch once the last item actually appears, not before")
+        XCTAssertEqual(viewModel.gifs.count, 8)
+    }
+
+    func testStalePaginationFetchDoesNotCorruptResultsAfterNewSearch() async throws {
+        let gated = GatedGifProviding(wrapping: MockGifProvider(latency: .zero))
+        let viewModel = makeViewModel(provider: gated)
+        await viewModel.onAppear()
+        XCTAssertEqual(viewModel.gifs.count, 8)
+
+        gated.gatedOffset = 8
+        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs.last!)
+        try await waitForBackgroundTask()
+        XCTAssertTrue(viewModel.isLoadingMore, "pagination fetch should be in flight, parked on the gate")
+
+        viewModel.searchQuery = "clap"
+        try await waitForDebounce()
+
+        XCTAssertFalse(viewModel.isLoadingMore, "a new search must clear a stale in-flight pagination spinner")
+        let searchResultIDs = viewModel.gifs.map(\.id)
+        XCTAssertTrue(viewModel.gifs.allSatisfy { $0.title.localizedCaseInsensitiveContains("clap") })
+
+        await gated.gate.open()
+        try await waitForBackgroundTask()
+
+        XCTAssertEqual(
+            viewModel.gifs.map(\.id),
+            searchResultIDs,
+            "the stale pagination fetch resolving late must not append its (unrelated) results onto the new search's list"
+        )
     }
 
     func testSearchOnTrendingCallsProviderSearch() async throws {

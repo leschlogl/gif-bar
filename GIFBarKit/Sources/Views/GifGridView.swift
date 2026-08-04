@@ -36,24 +36,32 @@ struct GifGridView: View {
                 subtitle: "Try a different search term."
             )
         } else {
-            MasonryGrid(
-                items: viewModel.gifs,
-                availableWidth: DesignTokens.Layout.contentWidth,
-                cardHeight: { gif, cardWidth in cardWidth * CGFloat(gif.height) / CGFloat(gif.width) }
-            ) { gif, _, cardHeight in
-                GIFCard(
-                    gif: gif,
-                    cardHeight: cardHeight,
-                    isFavorited: viewModel.favoriteIDs.contains(gif.id),
-                    isSelected: viewModel.selectedGifID == gif.id,
-                    isCopied: viewModel.copiedGifID == gif.id,
-                    onToggleFavorite: { Task { await viewModel.toggleFavorite(gif) } },
-                    onSelect: { viewModel.selectCard(gif) },
-                    onCopyGif: { Task { await viewModel.copyGif(gif) } },
-                    onCopyURL: { Task { await viewModel.copyURL(gif) } },
-                    loadPreviewData: { url in try await viewModel.loadImageData(for: url) }
-                )
-                .onAppear { viewModel.loadNextPageIfNeeded(currentItem: gif) }
+            VStack(spacing: 0) {
+                MasonryGrid(
+                    items: viewModel.gifs,
+                    availableWidth: DesignTokens.Layout.contentWidth,
+                    cardHeight: { gif, cardWidth in cardWidth * CGFloat(gif.height) / CGFloat(gif.width) }
+                ) { gif, _, cardHeight in
+                    GIFCard(
+                        gif: gif,
+                        cardHeight: cardHeight,
+                        isFavorited: viewModel.favoriteIDs.contains(gif.id),
+                        isSelected: viewModel.selectedGifID == gif.id,
+                        isCopied: viewModel.copiedGifID == gif.id,
+                        onToggleFavorite: { Task { await viewModel.toggleFavorite(gif) } },
+                        onSelect: { viewModel.selectCard(gif) },
+                        onCopyGif: { Task { await viewModel.copyGif(gif) } },
+                        onCopyURL: { Task { await viewModel.copyURL(gif) } },
+                        loadPreviewData: { url in try await viewModel.loadImageData(for: url) }
+                    )
+                    .onAppear { viewModel.loadNextPageIfNeeded(currentItem: gif) }
+                }
+
+                if viewModel.isLoadingMore {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(.top, DesignTokens.Spacing.gridGutter)
+                }
             }
         }
     }

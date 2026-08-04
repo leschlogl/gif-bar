@@ -66,4 +66,19 @@ final class GifDTOModelMappingTests: XCTestCase {
         let response = GiphyListResponse(data: [], pagination: nil)
         XCTAssertFalse(response.toGifPage().hasMore)
     }
+
+    func testEmptyPageHasNoMoreEvenWhenTotalCountClaimsMoreExist() {
+        // Giphy's `total_count` is a known-unreliable estimate — an empty `data` array
+        // must win over a `total_count` that still claims more results exist, or
+        // pagination would retry the same offset forever.
+        let response = GiphyListResponse(
+            data: [],
+            pagination: PaginationDTO(totalCount: 500, count: 0, offset: 40)
+        )
+
+        let page = response.toGifPage()
+
+        XCTAssertTrue(page.gifs.isEmpty)
+        XCTAssertFalse(page.hasMore)
+    }
 }

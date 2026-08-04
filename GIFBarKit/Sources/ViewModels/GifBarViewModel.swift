@@ -13,7 +13,6 @@ public final class GifBarViewModel {
     }
 
     private static let pageSize = 8
-    private static let prefetchThreshold = 10
     private static let copyFlashDuration: Duration = .milliseconds(900)
     private static let toastDismissDelay: Duration = .milliseconds(1400)
 
@@ -53,6 +52,11 @@ public final class GifBarViewModel {
 
     private var offset = 0
     private var lastLoadFailed = false
+    /// Bumped by every `reload()`; a `reload()`/`loadNextPage()` call only applies its
+    /// result if this hasn't moved on since it started — guards against a stale request
+    /// (e.g. a pagination fetch in flight when a new search fires) landing late and
+    /// corrupting the current list.
+    private var loadGeneration = 0
     private let searchQuerySubject = PassthroughSubject<String, Never>()
     private var searchCancellable: AnyCancellable?
     private var loadTask: Task<Void, Never>?
@@ -74,16 +78,14 @@ public final class GifBarViewModel {
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
             .removeDuplicates()
             .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    await self?.reload()
-                }
+                self?.reloadNow()
             }
     }
 
     public func onAppear() async {
         guard gifs.isEmpty, favoriteIDs.isEmpty else { return }
         favoriteIDs = await favorites.loadFavoriteIDs()
-        await reload()
+        await reload(generation: nextGeneration())
     }
 
     public func selectTab(_ newTab: Tab) {
@@ -106,8 +108,7 @@ public final class GifBarViewModel {
 
     public func loadNextPageIfNeeded(currentItem: Gif) {
         guard tab == .trending, hasMore, !isLoading, !isLoadingMore else { return }
-        guard let index = gifs.firstIndex(where: { $0.id == currentItem.id }) else { return }
-        guard index >= gifs.count - Self.prefetchThreshold else { return }
+        guard gifs.last?.id == currentItem.id else { return }
         loadNextPage()
     }
 
@@ -147,19 +148,30 @@ public final class GifBarViewModel {
 
     // MARK: - Loading
 
-    private func reloadNow() {
+    /// Cancels any in-flight load and returns a token for the caller's own load — bump
+    /// happens synchronously so a `loadNextPage()` already running gets invalidated too.
+    private func nextGeneration() -> Int {
         loadTask?.cancel()
+        loadGeneration += 1
+        return loadGeneration
+    }
+
+    private func reloadNow() {
+        let generation = nextGeneration()
         loadTask = Task { [weak self] in
-            await self?.reload()
+            await self?.reload(generation: generation)
         }
     }
 
-    private func reload() async {
+    private func reload(generation: Int) async {
         selectedGifID = nil
         offset = 0
         isLoading = true
+        // A reload always supersedes any in-flight pagination fetch (see `nextGeneration()`),
+        // so clear its spinner here rather than leaving it stuck on — that fetch's own
+        // completion won't touch this flag once its generation is stale.
+        isLoadingMore = false
         lastLoadFailed = false
-        defer { isLoading = false }
 
         do {
             switch tab {
@@ -167,42 +179,51 @@ public final class GifBarViewModel {
                 let page = searchQuery.isEmpty
                     ? try await provider.trending(offset: 0, limit: Self.pageSize)
                     : try await provider.search(query: searchQuery, offset: 0, limit: Self.pageSize)
+                guard generation == loadGeneration else { return }
                 gifs = page.gifs
                 offset = page.gifs.count
                 hasMore = page.hasMore
             case .favorites:
                 let fetched = try await provider.fetch(ids: favoriteIDs)
+                guard generation == loadGeneration else { return }
                 let ordered = order(fetched, by: favoriteIDs)
                 gifs = searchQuery.isEmpty
                     ? ordered
                     : ordered.filter { $0.title.localizedCaseInsensitiveContains(searchQuery) }
                 hasMore = false
             }
+            isLoading = false
         } catch {
+            guard generation == loadGeneration else { return }
             gifs = []
             hasMore = false
             lastLoadFailed = true
+            isLoading = false
         }
     }
 
     private func loadNextPage() {
         isLoadingMore = true
+        let generation = loadGeneration
         loadTask?.cancel()
         loadTask = Task { [weak self] in
             guard let self else { return }
-            defer { self.isLoadingMore = false }
             do {
                 let page = self.searchQuery.isEmpty
                     ? try await self.provider.trending(offset: self.offset, limit: Self.pageSize)
                     : try await self.provider.search(query: self.searchQuery, offset: self.offset, limit: Self.pageSize)
+                guard generation == self.loadGeneration else { return }
                 self.gifs.append(contentsOf: page.gifs)
                 self.offset += page.gifs.count
                 self.hasMore = page.hasMore
+                self.isLoadingMore = false
             } catch {
+                guard generation == self.loadGeneration else { return }
                 // Unlike `reload()`, a pagination failure leaves already-loaded gifs on
                 // screen — surfacing `ErrorStateView` here would hide valid content, so
                 // this just stops pagination silently rather than setting `lastLoadFailed`.
                 self.hasMore = false
+                self.isLoadingMore = false
             }
         }
     }

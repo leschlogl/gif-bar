@@ -34,7 +34,11 @@ extension GifDTO {
 extension GiphyListResponse {
     public func toGifPage() -> GifPage {
         let gifs = data.map { $0.toModel() }
-        guard let pagination else {
+        // Giphy's `total_count` is a known-unreliable estimate — trusting it alone can
+        // claim more pages exist forever once the API actually starts returning empty
+        // pages at the same offset. An empty page is a reliable "no more" signal on its
+        // own, regardless of what `total_count` says.
+        guard let pagination, !gifs.isEmpty else {
             return GifPage(gifs: gifs, hasMore: false)
         }
         let hasMore = pagination.offset + pagination.count < pagination.totalCount
