@@ -9,12 +9,9 @@ configs:
   Debug: debug
   Release: release
 
-settings:
-  configs:
-    Debug:
-      xcconfig: Config/Debug.xcconfig
-    Release:
-      xcconfig: Config/Release.xcconfig
+configFiles:
+  Debug: Config/Debug.xcconfig
+  Release: Config/Release.xcconfig
 
 packages:
   GIFBarKit:

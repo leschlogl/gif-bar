@@ -19,6 +19,8 @@ struct GifGridView: View {
     private var content: some View {
         if viewModel.isLoading {
             LoadingSkeletonGrid()
+        } else if viewModel.isErrorState {
+            ErrorStateView(retryAction: { viewModel.retryLoad() })
         } else if viewModel.isFavoritesEmpty {
             EmptyStateView(
                 icon: "heart",
@@ -48,7 +50,8 @@ struct GifGridView: View {
                     onToggleFavorite: { Task { await viewModel.toggleFavorite(gif) } },
                     onSelect: { viewModel.selectCard(gif) },
                     onCopyGif: { Task { await viewModel.copyGif(gif) } },
-                    onCopyURL: { Task { await viewModel.copyURL(gif) } }
+                    onCopyURL: { Task { await viewModel.copyURL(gif) } },
+                    loadPreviewData: { url in try await viewModel.loadImageData(for: url) }
                 )
                 .onAppear { viewModel.loadNextPageIfNeeded(currentItem: gif) }
             }

@@ -29,6 +29,43 @@ private final class SpyGifProviding: GifProviding, @unchecked Sendable {
     }
 }
 
+private struct ThrowingGifProviding: GifProviding {
+    struct SomeError: Error {}
+
+    func trending(offset: Int, limit: Int) async throws -> GifPage { throw SomeError() }
+    func search(query: String, offset: Int, limit: Int) async throws -> GifPage { throw SomeError() }
+    func fetch(ids: [String]) async throws -> [Gif] { throw SomeError() }
+}
+
+/// Fails until `stopFailing()` is called, so tests can exercise "retry succeeds" flows.
+private final class FlakyGifProviding: GifProviding, @unchecked Sendable {
+    private let wrapped: GifProviding
+    private var shouldFail = true
+
+    init(wrapping: GifProviding) {
+        self.wrapped = wrapping
+    }
+
+    func stopFailing() {
+        shouldFail = false
+    }
+
+    func trending(offset: Int, limit: Int) async throws -> GifPage {
+        guard !shouldFail else { throw ThrowingGifProviding.SomeError() }
+        return try await wrapped.trending(offset: offset, limit: limit)
+    }
+
+    func search(query: String, offset: Int, limit: Int) async throws -> GifPage {
+        guard !shouldFail else { throw ThrowingGifProviding.SomeError() }
+        return try await wrapped.search(query: query, offset: offset, limit: limit)
+    }
+
+    func fetch(ids: [String]) async throws -> [Gif] {
+        guard !shouldFail else { throw ThrowingGifProviding.SomeError() }
+        return try await wrapped.fetch(ids: ids)
+    }
+}
+
 private final class FakeFavoritesManaging: FavoritesManaging, @unchecked Sendable {
     private(set) var savedIDs: [String] = []
     var initialIDs: [String] = []
@@ -113,6 +150,32 @@ final class GifBarViewModelTests: XCTestCase {
 
         XCTAssertTrue(viewModel.isSearchEmpty)
         XCTAssertTrue(viewModel.gifs.isEmpty)
+    }
+
+    func testErrorStateFlagSetWhenInitialLoadFails() async {
+        let viewModel = makeViewModel(provider: ThrowingGifProviding())
+        await viewModel.onAppear()
+
+        XCTAssertTrue(viewModel.isErrorState)
+        XCTAssertTrue(viewModel.gifs.isEmpty)
+        XCTAssertFalse(viewModel.isGridVisible)
+        XCTAssertFalse(viewModel.isFavoritesEmpty)
+        XCTAssertFalse(viewModel.isSearchEmpty)
+    }
+
+    func testRetryLoadClearsErrorStateOnceProviderRecovers() async throws {
+        let flaky = FlakyGifProviding(wrapping: MockGifProvider(latency: .zero))
+        let viewModel = makeViewModel(provider: flaky)
+        await viewModel.onAppear()
+        XCTAssertTrue(viewModel.isErrorState)
+
+        flaky.stopFailing()
+        viewModel.retryLoad()
+        try await waitForBackgroundTask()
+
+        XCTAssertFalse(viewModel.isErrorState)
+        XCTAssertEqual(viewModel.gifs.count, 8)
+        XCTAssertTrue(viewModel.isGridVisible)
     }
 
     func testToggleFavoritePersistsReordersAndUpdatesVisibleList() async {

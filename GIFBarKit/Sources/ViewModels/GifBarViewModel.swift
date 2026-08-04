@@ -41,25 +41,34 @@ public final class GifBarViewModel {
     public private(set) var copiedGifID: String?
     public private(set) var toast: ToastMessage?
 
-    public var isFavoritesEmpty: Bool { tab == .favorites && !isLoading && favoriteIDs.isEmpty }
-    public var isSearchEmpty: Bool { !searchQuery.isEmpty && !isLoading && gifs.isEmpty && !isFavoritesEmpty }
-    public var isGridVisible: Bool { !isLoading && !isFavoritesEmpty && !isSearchEmpty }
+    public var isErrorState: Bool { !isLoading && lastLoadFailed }
+    public var isFavoritesEmpty: Bool { tab == .favorites && !isLoading && !isErrorState && favoriteIDs.isEmpty }
+    public var isSearchEmpty: Bool { !isErrorState && !searchQuery.isEmpty && !isLoading && gifs.isEmpty && !isFavoritesEmpty }
+    public var isGridVisible: Bool { !isLoading && !isErrorState && !isFavoritesEmpty && !isSearchEmpty }
 
     private let provider: GifProviding
     private let clipboard: ClipboardCopying
     private let favorites: FavoritesManaging
+    private let imageLoader: ImageDataLoading
 
     private var offset = 0
+    private var lastLoadFailed = false
     private let searchQuerySubject = PassthroughSubject<String, Never>()
     private var searchCancellable: AnyCancellable?
     private var loadTask: Task<Void, Never>?
     private var copyFlashTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
 
-    public init(provider: GifProviding, clipboard: ClipboardCopying, favorites: FavoritesManaging) {
+    public init(
+        provider: GifProviding,
+        clipboard: ClipboardCopying,
+        favorites: FavoritesManaging,
+        imageLoader: ImageDataLoading = UnavailableImageDataLoading()
+    ) {
         self.provider = provider
         self.clipboard = clipboard
         self.favorites = favorites
+        self.imageLoader = imageLoader
 
         searchCancellable = searchQuerySubject
             .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
@@ -88,6 +97,10 @@ public final class GifBarViewModel {
     public func closeSearch() {
         isSearchFieldOpen = false
         searchQuery = ""
+        reloadNow()
+    }
+
+    public func retryLoad() {
         reloadNow()
     }
 
@@ -126,6 +139,12 @@ public final class GifBarViewModel {
         handleCopySuccess(gifID: gif.id, toast: .linkCopied)
     }
 
+    /// Fetches a grid thumbnail's raw bytes for `AnimatedGIFView` — the `Views` layer
+    /// can't import `Networking`/`Services` directly, so it calls through here instead.
+    public func loadImageData(for url: URL) async throws -> Data {
+        try await imageLoader.data(for: url)
+    }
+
     // MARK: - Loading
 
     private func reloadNow() {
@@ -139,6 +158,7 @@ public final class GifBarViewModel {
         selectedGifID = nil
         offset = 0
         isLoading = true
+        lastLoadFailed = false
         defer { isLoading = false }
 
         do {
@@ -161,6 +181,7 @@ public final class GifBarViewModel {
         } catch {
             gifs = []
             hasMore = false
+            lastLoadFailed = true
         }
     }
 
@@ -178,6 +199,9 @@ public final class GifBarViewModel {
                 self.offset += page.gifs.count
                 self.hasMore = page.hasMore
             } catch {
+                // Unlike `reload()`, a pagination failure leaves already-loaded gifs on
+                // screen — surfacing `ErrorStateView` here would hide valid content, so
+                // this just stops pagination silently rather than setting `lastLoadFailed`.
                 self.hasMore = false
             }
         }
@@ -212,5 +236,16 @@ public final class GifBarViewModel {
             guard !Task.isCancelled, let self, self.toast?.id == message.id else { return }
             self.toast = nil
         }
+    }
+}
+
+/// Default `imageLoader` for call sites that don't render thumbnails (tests, previews
+/// using mock data with a `nil` `previewURL`) — the real `Networking.ImageCache` isn't
+/// reachable here since `ViewModels` can't import `Networking`.
+public struct UnavailableImageDataLoading: ImageDataLoading {
+    public init() {}
+
+    public func data(for url: URL) async throws -> Data {
+        throw URLError(.unknown)
     }
 }

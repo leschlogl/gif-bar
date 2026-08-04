@@ -1,3 +1,4 @@
+import Networking
 import Persistence
 import Services
 import SwiftUI
@@ -9,10 +10,20 @@ struct GIFBarApp: App {
     @State private var viewModel: GifBarViewModel
 
     init() {
-        let provider = MockGifProvider()
+        let apiClient = APIClient(apiKey: GiphyAPIKey.fromMainBundle() ?? "")
+        let provider = GiphyService(apiClient: apiClient)
         let favorites = FavoritesService(store: UserDefaultsFavoritesStore())
-        let clipboard = ClipboardService(provider: provider)
-        _viewModel = State(initialValue: GifBarViewModel(provider: provider, clipboard: clipboard, favorites: favorites))
+        // Shared between `ClipboardService` and the grid's `AnimatedGIFView` (via
+        // `GifBarViewModel.loadImageData`) so a GIF already rendered on screen reuses
+        // cached bytes instead of re-downloading when copied.
+        let imageCache = ImageCache()
+        let clipboard = ClipboardService(provider: provider, imageLoader: imageCache)
+        _viewModel = State(initialValue: GifBarViewModel(
+            provider: provider,
+            clipboard: clipboard,
+            favorites: favorites,
+            imageLoader: imageCache
+        ))
     }
 
     var body: some Scene {

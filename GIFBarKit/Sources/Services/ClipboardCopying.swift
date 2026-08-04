@@ -5,4 +5,5 @@ public protocol ClipboardCopying: Sendable {
 
 public enum ClipboardServiceError: Error, Sendable, Equatable {
     case gifNotFound(String)
+    case missingOriginalURL(String)
 }

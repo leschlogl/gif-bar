@@ -12,6 +12,7 @@ public struct GIFCard: View {
     private let onSelect: () -> Void
     private let onCopyGif: () -> Void
     private let onCopyURL: () -> Void
+    private let loadPreviewData: (URL) async throws -> Data
 
     @State private var isHovering = false
     @FocusState private var isFocused: Bool
@@ -25,7 +26,8 @@ public struct GIFCard: View {
         onToggleFavorite: @escaping () -> Void,
         onSelect: @escaping () -> Void,
         onCopyGif: @escaping () -> Void,
-        onCopyURL: @escaping () -> Void
+        onCopyURL: @escaping () -> Void,
+        loadPreviewData: @escaping (URL) async throws -> Data
     ) {
         self.gif = gif
         self.cardHeight = cardHeight
@@ -36,6 +38,7 @@ public struct GIFCard: View {
         self.onSelect = onSelect
         self.onCopyGif = onCopyGif
         self.onCopyURL = onCopyURL
+        self.loadPreviewData = loadPreviewData
     }
 
     public var body: some View {
@@ -66,7 +69,11 @@ public struct GIFCard: View {
     private var selectableBody: some View {
         Button(action: onSelect) {
             ZStack(alignment: .bottom) {
-                StripedPlaceholder(cornerRadius: DesignTokens.Radius.card)
+                if let previewURL = gif.previewURL {
+                    AnimatedGIFView(url: previewURL, loadData: loadPreviewData)
+                } else {
+                    StripedPlaceholder(cornerRadius: DesignTokens.Radius.card)
+                }
 
                 if isSelected {
                     LinearGradient(

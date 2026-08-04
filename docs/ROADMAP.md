@@ -8,7 +8,7 @@ decisions already made) before starting any task below.
 
 **Before touching code**, confirm the existing baseline still holds:
 ```sh
-cd GIFBarKit && swift test        # 36/36 should pass
+cd GIFBarKit && swift test        # 75/75 should pass
 cd .. && xcodebuild -project GIFBar.xcodeproj -scheme GIFBar build   # should be clean, 0 warnings
 ```
 
@@ -22,17 +22,63 @@ that didn't happen.
 
 ## Current status
 
-- **Done**: milestones 1 (project setup), 4–8 (Trending, Masonry, Search UI,
-  Clipboard UI, Favorites) — all built against `Services.MockGifProvider`,
-  not real network calls. Design system tokens/components exist (milestone 2
-  is functionally done except `ErrorStateView`, see Task 3.8).
-- **Not started**: milestone 3 (real Networking), most of milestone 9
-  (snapshot tests, UI test scenarios — only unit tests exist so far),
-  milestone 10 (performance polish), and a dedicated accessibility pass.
-- The seam is already in place: `ViewModels`/`Views` only ever see the
-  `Services.GifProviding` / `ClipboardCopying` protocols. Swapping
-  `MockGifProvider` for a real `GiphyService` should require zero changes
-  above the `Services` layer, by design.
+- **Done**: milestones 1 (project setup), 2 (design system, including
+  `ErrorStateView`), 3 (real Networking — see below), 4–8 (Trending,
+  Masonry, Search UI, Clipboard UI, Favorites).
+- **Milestone 3 (Networking) — fully done and verified live against the real
+  Giphy API**, including Task 3.4b. Concretely: `Networking` has
+  `NetworkError`, `Endpoint`, `RequestBuilder`, `APIClient` (wraps
+  `URLSession` via the `APIRequesting` protocol), the Giphy DTOs + decoder
+  (`GifDTO`/`ImagesDTO`/`RenditionDTO`/`GiphyListResponse`, handling Giphy's
+  string-encoded width/height), `GifRenditionPicker`, and `ImageCache`
+  (memory + disk, keyed by URL, in-flight request dedup via `ImageLoading`).
+  `Models.Gif` gained optional `previewURL`/`originalURL` fields (`nil` for
+  mock data — source-compatible, `MockGifProvider` untouched).
+  `Services.GiphyService: GifProviding` is the real implementation (chunks
+  `fetch(ids:)` into ≤50-id batches, reorders to match the request, matching
+  `MockGifProvider`'s contract). `ClipboardService` uses `gif.originalURL`
+  for both operations and downloads real bytes via `ImageLoading` for Copy
+  Binary. `GifBarViewModel` has an `isErrorState` flag (set by `reload()`
+  failures only — `loadNextPage()` failures leave existing gifs on screen and
+  just stop paging, rather than replacing the grid with `ErrorStateView`) and
+  a `retryLoad()` action wired into `GifGridView`. `App/GIFBarApp.swift`'s
+  composition root now builds a real `APIClient`/`GiphyService`/`ImageCache`
+  instead of `MockGifProvider` — the `ImageCache` instance is shared between
+  `ClipboardService` and `GifBarViewModel.loadImageData` (used by
+  `AnimatedGIFView`) for cache reuse. `AnimatedGIFView` (Task 3.4b) decodes
+  GIF frames via `ImageIO`/`CGImageSource` and plays them back manually in
+  `GIFCard`, replacing `StripedPlaceholder` whenever `gif.previewURL` is
+  non-nil; `ViewModels` exposes this via `GifBarViewModel.loadImageData(for:)`
+  since `Views` can't import `Networking` directly (`Services.ImageDataLoading`
+  is a same-shaped protocol redeclared for this, with `Networking.ImageCache`
+  conforming via a retroactive extension — same trick as
+  `PasteboardWriting`/`APIRequesting`). Confirmed working live: trending
+  loads, GIFs render and animate.
+  **Two real, pre-existing bugs were found and fixed while verifying this
+  end-to-end** (not caught by `swift test`/`xcodebuild` alone, since neither
+  actually launches the app):
+  1. `project.yml` used `settings.configs.<Config>.xcconfig` to point at the
+     `Config/*.xcconfig` files — that's the wrong XcodeGen key and silently
+     set a literal, meaningless build setting named `xcconfig` instead of
+     attaching the file as the target's base configuration. Every setting
+     from `Base.xcconfig`/`Debug.xcconfig`/`Release.xcconfig` (including
+     `GIPHY_API_KEY`, `PRODUCT_BUNDLE_IDENTIFIER`, `ENABLE_HARDENED_RUNTIME`)
+     was never actually applied. Fixed by using the top-level `configFiles:`
+     key instead.
+  2. `App/Info.plist` never declared `CFBundleIdentifier`/`CFBundleExecutable`
+     — harmless for `swift build`/`xcodebuild build`, but fatal at actual
+     launch: macOS's App Sandbox initializer needs a bundle identifier to
+     construct the container path, so the process trapped in
+     `_libsecinit_appsandbox` before any app code ran. Fixed by adding both
+     keys (`$(PRODUCT_BUNDLE_IDENTIFIER)` / `$(EXECUTABLE_NAME)`).
+
+  Given neither bug was visible from `swift test`/`xcodebuild build`/reading
+  the code — only from actually launching the built app — treat "builds
+  clean" and "actually runs" as separate claims for any future milestone
+  that touches `project.yml`, `Info.plist`, or entitlements.
+- **Not started**: milestone 9 (snapshot tests, UI test scenarios — only unit
+  tests exist so far), milestone 10 (performance polish), a dedicated
+  accessibility pass, and CI/CD.
 
 ## Milestone 3 — Networking (next up)
 
@@ -213,3 +259,25 @@ provider that can't fail).
 pass across the toolbar (search field, tab bar, search-toggle button) and
 toast, and verify with VoiceOver actually running — not background-agent
 suitable, needs a real display and the user driving VoiceOver.
+
+## CI/CD (GitHub Actions) — deferred
+
+Not started yet; add later, once milestone 3 (real Networking) has landed
+and there's more than mock-only behavior worth gating on CI. The `gif-bar`
+repo will be made public soon, so this is being held until then rather than
+tuned around private-repo constraints. Two things, likely as two separate
+workflows:
+
+- **CI**: on push/PR, `xcodegen generate`, `swift test` (`GIFBarKit`), and a
+  full `xcodebuild` of the `GIFBar` scheme — run on GitHub-hosted `macos-26`
+  runners (GA since Feb 2026, default Xcode 26.6, matching this project's
+  local toolchain exactly — no version mismatch to worry about).
+- **Release**: on tag push (or manual dispatch), build a Release
+  configuration `.app`, and publish it as a GitHub Release (likely zipped/
+  notarization is a separate concern to figure out then — Developer ID
+  signing + notarization needs an Apple Developer account and secrets set up
+  in the repo, not just a CI runner).
+
+**Background-agent suitable**: drafting the workflow YAML, yes. Verifying it
+actually runs green on GitHub's infrastructure needs a real push/PR against
+the GitHub remote, which the user should trigger and watch at least once.
