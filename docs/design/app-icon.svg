@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4ee37a"></stop>
+      <stop offset="100%" stop-color="#26b955"></stop>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"></stop>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="url(#bg)"></rect>
+  <rect x="0" y="0" width="1024" height="1024" rx="228" fill="url(#sheen)"></rect>
+  <g>
+    <rect x="220" y="372" width="584" height="280" rx="56" fill="#ffffff" opacity="0.97"></rect>
+    <text x="512" y="565" font-family="-apple-system,BlinkMacSystemFont,&#39;SF Pro Display&#39;,Helvetica,Arial,sans-serif" font-size="188" font-weight="800" fill="#1c9c46" text-anchor="middle" letter-spacing="4">GIF</text>
+  </g>
+  <path d="M340 700 a172 172 0 0 0 344 0" stroke="#ffffff" stroke-width="26" fill="none" stroke-linecap="round" opacity="0.85"></path>
+</svg>
