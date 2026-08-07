@@ -288,20 +288,78 @@ provider that can't fail).
 - **9.3**: Backfill unit test coverage for whatever Networking edge cases
   turn up during milestone 3 (retry/timeout/malformed-JSON handling, etc.).
 
-## Milestone 10 — Performance polishing (after milestone 3 lands)
+## Milestone 10 — Performance polishing
 
+**Done from code (2026-08-07), no display needed**: `Networking.ImageCache`'s
+memory tier (`NSCache`) had no `totalCostLimit` — it only evicted under actual
+system memory pressure, a late reactive backstop rather than a budget. Now
+capped at 150MB (`ImageCache.defaultMemoryCacheLimitBytes`), with `cost:`
+passed as each entry's real byte count. Verified with a real test
+(`testMemoryCacheEvictsOnceTotalCostLimitIsExceeded`), not just trusted —
+sets a limit smaller than one entry and confirms `NSCache` actually evicts
+it. Confirmed *not* a bug: `FileManagerDiskImageCache` writes to
+`~/Library/Caches`, which macOS already reclaims under disk pressure by
+platform convention — left alone. "No duplicate downloads under fast
+scrolling" was already covered by existing `ImageCacheTests`
+(`testConcurrentRequestsForSameURLShareOneDownload`).
+
+Looked at but *not* changed, flagged only: `Views.MasonryGrid` calls
+`MasonryBalancer.distribute` (a full O(n) rebalance across every loaded item)
+on every `body` re-evaluation — including ones that don't add/remove items,
+like selecting a card. At realistic list sizes for this app (a menu-bar GIF
+picker, not an infinite social feed) this is sub-millisecond trivial work;
+flagging rather than fixing since a memoization pass isn't justified without
+profiling evidence it's actually a problem.
+
+**Still needs the user, live, with a real display**:
 - Profile real scrolling with live images and the real image cache (not
-  meaningful against the mock provider). Tune cache size limits, confirm no
-  duplicate downloads under fast scrolling, check memory footprint with a
-  large Trending/Search result set.
+  meaningful against the mock provider) via Instruments' Time Profiler —
+  particularly with `AnimatedGIFView`'s per-cell animation loops (each
+  visible card runs its own independent `Task.sleep`-driven frame loop).
+- Check actual memory footprint (Activity Monitor or Instruments' Allocations)
+  with a large Trending/Search result set loaded, to see whether the new
+  150MB cache cap is well-tuned in practice or needs adjusting.
 
-## Accessibility pass (ongoing, but worth a dedicated sweep)
+## Accessibility pass
 
-`GIFCard` already has basic VoiceOver labels and keyboard navigation
-(`.focusable()`, Enter/Space to select, a custom focus ring). Do a focused
-pass across the toolbar (search field, tab bar, search-toggle button) and
-toast, and verify with VoiceOver actually running — not background-agent
-suitable, needs a real display and the user driving VoiceOver.
+**Done from code (2026-08-07), no display needed**:
+- `LoadingPlaceholder`'s shimmer was a perpetual `repeatForever` animation
+  with no check against `accessibilityReduceMotion` — now shows a static
+  highlight instead of a sliding one when Reduce Motion is on.
+- `ToastOverlay`'s toasts ("GIF Copied", "Added to Favorites", etc.) were
+  purely visual and self-dismissing, giving VoiceOver users no feedback that
+  copy/favorite actions succeeded — now posts an
+  `AccessibilityNotification.Announcement` when the toast changes.
+- Computed actual WCAG contrast ratios for `DesignTokens.Color`'s text
+  tokens against the popover background: `textPrimary` 15.6:1, `textSecondary`
+  5.9:1 (both comfortably pass AA). `textTertiary` (used only for the large
+  decorative icon in `EmptyStateView`/`ErrorStateView`) is 2.8:1, under the
+  3:1 AA minimum for non-text UI components — **not changed**, since it's a
+  visual design token value and a deliberate call for the user to make, not
+  a silent fix. `0x77777C` would clear 3.8:1 if wanted.
+- Confirmed Dynamic Type isn't supported anywhere (`DesignTokens.Font` is all
+  fixed-size `.system(size:)`) — **not changed**, likely an intentional
+  constraint given the popover's fixed 380×580 non-resizable size; flagging
+  only.
+
+**Still needs the user, live, with VoiceOver actually running** — this is
+the important part, not background-agent-suitable:
+- **The biggest open question**: does `GIFCard`'s `.accessibilityLabel("\(gif.title)
+  GIF")` on the outer `ZStack` actually merge the card into one VoiceOver
+  stop, or does VoiceOver see the inner `selectableBody` Button and the
+  `favoriteButton` as two separate stops (ignoring the outer label)? This
+  determines whether tabbing through a loaded grid is N stops or 2N stops —
+  worth checking with VoiceOver running before trusting the label is doing
+  anything. (Deliberately not "fixed" blind — restructuring accessibility
+  grouping without verifying current behavior first risks making it worse.)
+- VoiceOver sweep across the toolbar (search field, clear button, favorites
+  toggle, settings `•••` menu — including whether the programmatically-shown
+  `NSMenu` in `SettingsMenu` is reachable/navigable via VoiceOver at all,
+  since it's not a native SwiftUI `Menu`) and the toast's actual spoken
+  announcement.
+- Keyboard focus order through the grid and toolbar — confirm it matches
+  visual/logical order, particularly since `GIFCard` uses `.focusable()` +
+  `.onKeyPress` rather than a native control.
 
 ## CI/CD (GitHub Actions) — done
 
