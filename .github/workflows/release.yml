@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Bakes a real key into the shipped binary via a repo secret, so the downloaded
+      # app works out of the box — extractable from the binary (strings/otool), so this
+      # should be a key you're fine having public/rate-limited. Config/Base.xcconfig
+      # #includes this file, injecting GIPHY_API_KEY into Info.plist at build time.
+      - name: Set up secrets
+        run: echo "GIPHY_API_KEY = ${{ secrets.GIPHY_API_KEY }}" > Config/Secrets.xcconfig
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: GIFBarKit/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('GIFBarKit/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      # Ad-hoc signed — no Developer ID/notarization yet (see docs/ROADMAP.md's CI/CD
+      # section), so Gatekeeper will flag the app on first launch until that's set up.
+      - name: Build Release configuration
+        run: |
+          xcodebuild -project GIFBar.xcodeproj -scheme GIFBar -configuration Release \
+            -derivedDataPath build clean build
+
+      - name: Zip the app
+        run: |
+          cd build/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent GIFBar.app "$GITHUB_WORKSPACE/GIFBar.zip"
+
+      # Manual (workflow_dispatch) runs build and stop here without publishing, since
+      # there's no tag to name the release after — use them to smoke-test the build.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" GIFBar.zip \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
