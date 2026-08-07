@@ -38,14 +38,16 @@ let package = Package(
             dependencies: [
                 "DesignSystem",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
-            ]
+            ],
+            exclude: ["__Snapshots__"]
         ),
         .testTarget(
             name: "ViewsTests",
             dependencies: [
                 "Views",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
-            ]
+            ],
+            exclude: ["__Snapshots__"]
         ),
     ]
 )
