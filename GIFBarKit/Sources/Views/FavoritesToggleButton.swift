@@ -23,5 +23,6 @@ struct FavoritesToggleButton: View {
         .opacity(isHovering ? 0.85 : 1)
         .onHover { isHovering = $0 }
         .accessibilityLabel(isActive ? "Showing Favorites" : "Show Favorites")
+        .accessibilityIdentifier("favoritesToggleButton")
     }
 }

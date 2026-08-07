@@ -29,6 +29,7 @@ struct SettingsMenu: View {
         .onHover { isHovering = $0 }
         .background(ViewAnchor(view: $anchorView))
         .accessibilityLabel("More")
+        .accessibilityIdentifier("settingsMenuButton")
     }
 
     private func showMenu() {

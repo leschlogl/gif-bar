@@ -13,6 +13,7 @@ struct ToolbarView: View {
                     .font(DesignTokens.Font.searchField)
                     .foregroundStyle(DesignTokens.Color.textPrimary)
                     .accessibilityLabel("Search GIFs")
+                    .accessibilityIdentifier("searchField")
 
                 if !viewModel.searchQuery.isEmpty {
                     Button {
@@ -24,6 +25,7 @@ struct ToolbarView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Clear search")
+                    .accessibilityIdentifier("clearSearchButton")
                 }
             }
             .padding(.horizontal, 12)

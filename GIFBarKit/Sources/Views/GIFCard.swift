@@ -52,6 +52,7 @@ public struct GIFCard: View {
         .onKeyPress(.space) { onSelect(); return .handled }
         .onHover { isHovering = $0 }
         .accessibilityLabel("\(gif.title) GIF")
+        .accessibilityIdentifier("gifCard")
         .contextMenu {
             Button("Copy GIF URL", action: onCopyURL)
             Button("Copy GIF", action: onCopyGif)
@@ -106,6 +107,7 @@ public struct GIFCard: View {
         .opacity(isFavorited || isHovering ? 1 : 0)
         .animation(DesignTokens.Animations.hover, value: isFavorited || isHovering)
         .accessibilityLabel(isFavorited ? "Remove from Favorites" : "Add to Favorites")
+        .accessibilityIdentifier("favoriteButton")
     }
 
     private var actionTray: some View {
