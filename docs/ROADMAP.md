@@ -76,9 +76,52 @@ that didn't happen.
   the code — only from actually launching the built app — treat "builds
   clean" and "actually runs" as separate claims for any future milestone
   that touches `project.yml`, `Info.plist`, or entitlements.
-- **Not started**: milestone 9 (snapshot tests, UI test scenarios — only unit
-  tests exist so far), milestone 10 (performance polish), a dedicated
-  accessibility pass, and CI/CD.
+- **Milestone 9.1 (snapshot tests) — done.** Added `pointfreeco/swift-snapshot-testing`
+  as `GIFBarKit`'s first external SPM dependency (`Package.resolved` is now tracked,
+  no longer gitignored). The library has no macOS `SwiftUI.View` → image strategy (only
+  iOS/tvOS) — `Tests/{DesignSystemTests,ViewsTests}/SnapshotHelpers.swift` wraps views in
+  `NSHostingView` and snapshots that as an `NSView` instead; duplicated per test target
+  since SPM test targets can't share sources without a dedicated support target for a
+  few lines of code. Covered: `GIFCard` (unselected/favorited/selected), `EmptyStateView`,
+  `ErrorStateView`, `LoadingSkeletonGrid`, and full-screen `RootView` in three states
+  (trending loaded, search-no-results, favorites-empty) driven via
+  `GifBarViewModel.preview()`. Text-token colors (`DesignTokens.Color.textPrimary` etc.)
+  are tuned for the app's dark popover background, so state-view tests render over an
+  approximated dark background rather than the host's default white.
+- **Milestone 9.2 (UI tests) — drafted, not yet run.** Replaced the single smoke test in
+  `GIFBarUITests.swift` with 8 scenarios (trending load, search filter, infinite scroll,
+  favorite/unfavorite + Favorites tab, copy URL, copy binary, persistence across relaunch).
+  Added `.accessibilityIdentifier` to `GIFCard`/favorite button/search field/clear button/
+  favorites toggle/settings menu button, since the existing `.accessibilityLabel`s weren't
+  reliable query targets (several change dynamically, e.g. Favorites toggle's "Show
+  Favorites"/"Showing Favorites", or embed the GIF's live title). **Found and fixed a real
+  pre-existing bug while wiring this up**: `Config/Base.xcconfig` sets `PRODUCT_NAME =
+  GIFBar` project-wide via `project.yml`'s top-level `configFiles:`, which `GIFBarUITests`
+  silently inherited too — both targets tried to produce `GIFBar.swiftmodule`, so
+  `xcodebuild ... test`/`build-for-testing` failed outright. Nobody had hit this before
+  since only `swift test` (GIFBarKit) and `xcodebuild build` (app only, no test bundle)
+  had actually been run. Fixed by overriding `PRODUCT_NAME: $(TARGET_NAME)` on the
+  `GIFBarUITests` target in `project.yml`. The test bundle now builds cleanly
+  (`build-for-testing` succeeds) but **could not be executed from this environment** —
+  beyond the standing no-display constraint, this sandboxed CLI session also hits a
+  code-signing/process-injection restriction (`mapping process and mapped file have
+  different Team IDs`) that blocks `xcodebuild test` from actually launching the UI test
+  runner. The user needs to run these locally (with a real `GIPHY_API_KEY`) to find out
+  whether the scenarios themselves pass.
+- **Milestone 9.3 (Networking edge-case backfill) — already satisfied, no action taken.**
+  Checked `NetworkingTests`/`ServicesTests` against this bullet's intent (retry/timeout/
+  malformed-JSON handling): HTTP status errors, malformed JSON, transport failures,
+  concurrent-request dedup, disk-cache hit/write-through, failed-fetch-doesn't-cache,
+  id-batch chunking >50, result reordering/dropping-unknown-ids, and empty-input
+  short-circuiting are all already covered from the original milestone 3 work. Nothing
+  meaningful left to backfill here. (Noted in passing, not acted on: `NetworkError
+  .missingAPIKey` is declared but never thrown anywhere — dead code, left alone since it
+  wasn't in scope.)
+- **Not started**: milestone 10 (performance polish) and a dedicated accessibility pass —
+  both need a live display and the user driving the app/VoiceOver, not feasible from this
+  environment. CI/CD is still deferred: the roadmap's own gating condition ("once the repo
+  is made public") isn't met yet — `gh repo view` confirms `leschlogl/gif-bar` is still
+  private.
 
 ## Milestone 3 — Networking (next up)
 
