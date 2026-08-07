@@ -30,6 +30,37 @@ final class GifDTOTests: XCTestCase {
         XCTAssertEqual(dto.images.original?.url, URL(string: "https://media.giphy.com/original.gif"))
     }
 
+    func testDecodesAltText() throws {
+        let json = """
+        {
+            "id": "abc123",
+            "title": "Excited Cat",
+            "alt_text": "A cat jumping in excitement",
+            "images": {
+                "original": { "url": "https://media.giphy.com/original.gif", "width": "480", "height": "360" }
+            }
+        }
+        """
+        let dto = try decode(json, as: GifDTO.self)
+
+        XCTAssertEqual(dto.altText, "A cat jumping in excitement")
+    }
+
+    func testDecodesMissingAltTextAsNil() throws {
+        let json = """
+        {
+            "id": "abc123",
+            "title": "Excited Cat",
+            "images": {
+                "original": { "url": "https://media.giphy.com/original.gif", "width": "480", "height": "360" }
+            }
+        }
+        """
+        let dto = try decode(json, as: GifDTO.self)
+
+        XCTAssertNil(dto.altText)
+    }
+
     func testDecodesGifWithNumericWidthAndHeight() throws {
         let json = """
         {

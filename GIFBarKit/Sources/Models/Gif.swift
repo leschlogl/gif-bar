@@ -11,13 +11,25 @@ public struct Gif: Identifiable, Hashable, Sendable, Codable {
     /// Full-quality `images.original` URL, used for both clipboard operations
     /// (see docs/decisions/gif-handling.md). `nil` for mock data.
     public let originalURL: URL?
+    /// Giphy's accessibility description for this GIF, when present and non-empty —
+    /// prefer this over `title` for VoiceOver labels. `nil` for mock data.
+    public let altText: String?
 
-    public init(id: String, title: String, width: Int, height: Int, previewURL: URL? = nil, originalURL: URL? = nil) {
+    public init(
+        id: String,
+        title: String,
+        width: Int,
+        height: Int,
+        previewURL: URL? = nil,
+        originalURL: URL? = nil,
+        altText: String? = nil
+    ) {
         self.id = id
         self.title = title
         self.width = width
         self.height = height
         self.previewURL = previewURL
         self.originalURL = originalURL
+        self.altText = altText
     }
 }

@@ -24,6 +24,30 @@ final class GifDTOModelMappingTests: XCTestCase {
         XCTAssertEqual(gif.height, 160)
     }
 
+    func testToModelPassesThroughNonEmptyAltText() {
+        let images = ImagesDTO(fixedWidthSmall: nil, fixedWidth: nil, fixedWidthDownsampled: nil, original: RenditionDTO(
+            url: URL(string: "https://example.com/original.gif")!,
+            width: 480,
+            height: 384
+        ))
+        let dto = GifDTO(id: "1", title: "Cat", images: images, altText: "  A cat jumping in excitement  ")
+
+        XCTAssertEqual(dto.toModel().altText, "A cat jumping in excitement", "should trim surrounding whitespace")
+    }
+
+    func testToModelNormalizesEmptyOrBlankAltTextToNil() {
+        let images = ImagesDTO(fixedWidthSmall: nil, fixedWidth: nil, fixedWidthDownsampled: nil, original: RenditionDTO(
+            url: URL(string: "https://example.com/original.gif")!,
+            width: 480,
+            height: 384
+        ))
+
+        // Giphy returns "" far more often than omitting alt_text outright.
+        XCTAssertNil(GifDTO(id: "1", title: "Cat", images: images, altText: "").toModel().altText)
+        XCTAssertNil(GifDTO(id: "1", title: "Cat", images: images, altText: "   ").toModel().altText)
+        XCTAssertNil(GifDTO(id: "1", title: "Cat", images: images, altText: nil).toModel().altText)
+    }
+
     func testToModelFallsBackToOriginalDimensionsWhenNoRenditionPicked() {
         let images = ImagesDTO(fixedWidthSmall: nil, fixedWidth: nil, fixedWidthDownsampled: nil, original: RenditionDTO(
             url: URL(string: "https://example.com/original.gif")!,

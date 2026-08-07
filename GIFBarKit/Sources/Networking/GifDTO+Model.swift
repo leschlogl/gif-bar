@@ -20,13 +20,18 @@ extension GifDTO {
             scale: defaultDisplayScale
         )
         let dimensions = previewRendition ?? images.original
+        // Giphy returns "" (present but empty) far more often than omitting the field
+        // outright — normalize that to nil here so callers can just do
+        // `gif.altText ?? gif.title` without re-checking for blankness themselves.
+        let normalizedAltText = altText?.trimmingCharacters(in: .whitespacesAndNewlines)
         return Gif(
             id: id,
             title: title,
             width: dimensions?.width ?? 0,
             height: dimensions?.height ?? 0,
             previewURL: previewRendition?.url,
-            originalURL: images.original?.url
+            originalURL: images.original?.url,
+            altText: (normalizedAltText?.isEmpty ?? true) ? nil : normalizedAltText
         )
     }
 }

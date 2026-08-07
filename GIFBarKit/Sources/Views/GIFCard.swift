@@ -51,7 +51,10 @@ public struct GIFCard: View {
         .onKeyPress(.return) { onSelect(); return .handled }
         .onKeyPress(.space) { onSelect(); return .handled }
         .onHover { isHovering = $0 }
-        .accessibilityLabel("\(gif.title) GIF")
+        // Giphy's alt_text is purpose-written for screen readers and often more
+        // descriptive than title (which can be terse or auto-generated) — prefer it,
+        // falling back to title for mock data / GIFs Giphy didn't supply one for.
+        .accessibilityLabel(gif.altText ?? "\(gif.title) GIF")
         .accessibilityIdentifier("gifCard")
         .contextMenu {
             Button("Copy GIF URL", action: onCopyURL)
