@@ -183,7 +183,11 @@ final class GifBarViewModelTests: XCTestCase {
     }
 
     private func waitForDebounce() async throws {
-        try await Task.sleep(for: .milliseconds(350))
+        // The 300ms Combine debounce plus a margin generous enough to also cover the
+        // subsequent reload's async hops (Task creation, provider call, state update) —
+        // 350ms cut it too close under a more contended CI scheduler and was observed
+        // flaking testStalePaginationFetchDoesNotCorruptResultsAfterNewSearch there.
+        try await Task.sleep(for: .milliseconds(600))
     }
 
     private func waitForBackgroundTask() async throws {
