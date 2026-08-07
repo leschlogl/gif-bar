@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: swift test (GIFBarKit)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: GIFBarKit/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('GIFBarKit/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: swift test
+        working-directory: GIFBarKit
+        run: swift test
+
+  app-build:
+    name: xcodebuild (GIFBar)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      # Real key isn't needed to compile — only Config/Secrets.xcconfig needs to exist,
+      # since Config/Base.xcconfig #includes it. The app never calls the network during
+      # `xcodebuild build`, only at runtime.
+      - name: Set up placeholder secrets
+        run: cp Config/Secrets.xcconfig.example Config/Secrets.xcconfig
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Cache SPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: GIFBarKit/.build
+          key: spm-${{ runner.os }}-${{ hashFiles('GIFBarKit/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Build
+        run: xcodebuild -project GIFBar.xcodeproj -scheme GIFBar build
