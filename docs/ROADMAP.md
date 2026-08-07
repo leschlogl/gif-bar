@@ -323,6 +323,11 @@ profiling evidence it's actually a problem.
 ## Accessibility pass
 
 **Done from code (2026-08-07), no display needed**:
+- Giphy's `alt_text` field (a screen-reader-specific description, distinct
+  from and often more descriptive than `title`) wasn't being decoded at all.
+  `GifDTO.altText` now decodes it, `toModel()` normalizes blank/whitespace-only
+  values to `nil` (Giphy returns `""` far more often than omitting the field),
+  and `GIFCard` prefers it over `"<title> GIF"` for its `accessibilityLabel`.
 - `LoadingPlaceholder`'s shimmer was a perpetual `repeatForever` animation
   with no check against `accessibilityReduceMotion` — now shows a static
   highlight instead of a sliding one when Reduce Motion is on.
