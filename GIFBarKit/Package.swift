@@ -14,6 +14,9 @@ let package = Package(
         .library(name: "ViewModels", targets: ["ViewModels"]),
         .library(name: "Views", targets: ["Views"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
+    ],
     targets: [
         .target(name: "Utilities"),
         .target(name: "Models", dependencies: ["Utilities"]),
@@ -30,7 +33,19 @@ let package = Package(
         .testTarget(name: "PersistenceTests", dependencies: ["Persistence"]),
         .testTarget(name: "ServicesTests", dependencies: ["Services"]),
         .testTarget(name: "ViewModelsTests", dependencies: ["ViewModels"]),
-        .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem"]),
-        .testTarget(name: "ViewsTests", dependencies: ["Views"]),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: [
+                "DesignSystem",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ]
+        ),
+        .testTarget(
+            name: "ViewsTests",
+            dependencies: [
+                "Views",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ]
+        ),
     ]
 )
