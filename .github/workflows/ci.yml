@@ -24,9 +24,15 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
+      # Snapshot tests (…SnapshotTests) are skipped here: they were recorded on a Retina
+      # display (2x backing scale) and this headless runner has no attached display, so
+      # NSHostingView snapshots come back at a different pixel scale entirely — a gap no
+      # amount of precision tolerance closes (verified: still failed at precision 0.98).
+      # They remain a real local-dev safety net, just not CI-portable; run `swift test`
+      # (no --skip) locally to exercise them.
       - name: swift test
         working-directory: GIFBarKit
-        run: swift test
+        run: swift test --skip SnapshotTests
 
   app-build:
     name: xcodebuild (GIFBar)
