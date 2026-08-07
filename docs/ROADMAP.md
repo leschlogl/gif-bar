@@ -117,11 +117,11 @@ that didn't happen.
   meaningful left to backfill here. (Noted in passing, not acted on: `NetworkError
   .missingAPIKey` is declared but never thrown anywhere — dead code, left alone since it
   wasn't in scope.)
+- **CI/CD — done** (see the dedicated section below). The repo went public
+  2026-08-07 and both workflows landed and were verified green the same day.
 - **Not started**: milestone 10 (performance polish) and a dedicated accessibility pass —
   both need a live display and the user driving the app/VoiceOver, not feasible from this
-  environment. CI/CD is still deferred: the roadmap's own gating condition ("once the repo
-  is made public") isn't met yet — `gh repo view` confirms `leschlogl/gif-bar` is still
-  private.
+  environment.
 
 ## Milestone 3 — Networking (next up)
 
@@ -303,24 +303,51 @@ pass across the toolbar (search field, tab bar, search-toggle button) and
 toast, and verify with VoiceOver actually running — not background-agent
 suitable, needs a real display and the user driving VoiceOver.
 
-## CI/CD (GitHub Actions) — deferred
+## CI/CD (GitHub Actions) — done
 
-Not started yet; add later, once milestone 3 (real Networking) has landed
-and there's more than mock-only behavior worth gating on CI. The `gif-bar`
-repo will be made public soon, so this is being held until then rather than
-tuned around private-repo constraints. Two things, likely as two separate
-workflows:
+`gif-bar` went public 2026-08-07; `.github/workflows/ci.yml` and `release.yml`
+landed the same day, both verified green on GitHub's actual infrastructure
+(not just locally), matching the bar this section originally set.
 
-- **CI**: on push/PR, `xcodegen generate`, `swift test` (`GIFBarKit`), and a
-  full `xcodebuild` of the `GIFBar` scheme — run on GitHub-hosted `macos-26`
-  runners (GA since Feb 2026, default Xcode 26.6, matching this project's
-  local toolchain exactly — no version mismatch to worry about).
-- **Release**: on tag push (or manual dispatch), build a Release
-  configuration `.app`, and publish it as a GitHub Release (likely zipped/
-  notarization is a separate concern to figure out then — Developer ID
-  signing + notarization needs an Apple Developer account and secrets set up
-  in the repo, not just a CI runner).
+- **CI** (`ci.yml`, on push to `main`/PRs): two parallel jobs on `macos-26`
+  (matches local Xcode 26.6 toolchain exactly). `unit-tests` runs `swift test
+  --skip SnapshotTests` directly against `GIFBarKit` — snapshot suites are
+  excluded here, not disabled: they were recorded on a Retina display (2x
+  backing scale) and this headless runner has no attached display, so
+  `NSHostingView` snapshots come back at a different pixel scale entirely, a
+  gap no amount of `precision`/`perceptualPrecision` tolerance closes (tried
+  0.98, still failed outright — confirmed a scale/dimension mismatch, not a
+  hinting/antialiasing one). They remain a real local-dev safety net via
+  plain `swift test`. `app-build` installs XcodeGen via Homebrew, copies
+  `Config/Secrets.xcconfig.example` as a placeholder (compiling only needs
+  the file to exist — no network call happens during build or test), runs
+  `xcodegen generate`, then a full `xcodebuild build`.
+- **Release** (`release.yml`, on `v*.*.*` tag push or manual dispatch): builds
+  the Release configuration, zips the `.app` via `ditto`, and publishes it as
+  a GitHub Release via `gh release create` (no third-party action needed —
+  `gh` and `GITHUB_TOKEN` are already available on the runner). Manual
+  dispatch runs the build as a smoke test but stops before publishing (no tag
+  to name a release after). Bakes a real `GIPHY_API_KEY` into the shipped
+  binary from a `GIPHY_API_KEY` repo secret — the user's explicit choice over
+  shipping a non-functional placeholder — so the downloaded app works out of
+  the box; trade-off is the key is extractable from the binary
+  (strings/otool), so it should be one they're fine having public/
+  rate-limited. **Not yet set up**: the `GIPHY_API_KEY` repo secret itself
+  (`gh secret set GIPHY_API_KEY --repo leschlogl/gif-bar`) — until that
+  exists, a tag push will fail at the "Set up secrets" step. Still ad-hoc
+  signed, no Developer ID/notarization (needs an Apple Developer account —
+  separate from the CI/CD work itself, genuinely deferred, not blocking).
 
-**Background-agent suitable**: drafting the workflow YAML, yes. Verifying it
-actually runs green on GitHub's infrastructure needs a real push/PR against
-the GitHub remote, which the user should trigger and watch at least once.
+Two real bugs were found and fixed getting the first CI run green (both are
+CI-only flakes — `swift test` alone never surfaced either locally):
+1. `GIFBarUITests` silently inherited `PRODUCT_NAME = GIFBar` from
+   `Config/Base.xcconfig` (applied project-wide via `project.yml`'s top-level
+   `configFiles:`), colliding with the app target's own module — fixed by
+   overriding `PRODUCT_NAME: $(TARGET_NAME)` on that target. Caught while
+   drafting milestone 9.2's UI tests, not by CI itself, but same root cause
+   class.
+2. `GifBarViewModelTests.testStalePaginationFetchDoesNotCorruptResultsAfterNewSearch`'s
+   `waitForDebounce()` helper only budgeted 50ms of margin past the 300ms
+   Combine debounce for the subsequent reload's async hops to finish — fine
+   on a local machine, too tight under CI's more contended scheduler. Bumped
+   to 600ms.
