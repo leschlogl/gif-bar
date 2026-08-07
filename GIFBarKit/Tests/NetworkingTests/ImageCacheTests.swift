@@ -84,6 +84,23 @@ final class ImageCacheTests: XCTestCase {
         XCTAssertEqual(callCount, 1)
     }
 
+    func testMemoryCacheEvictsOnceTotalCostLimitIsExceeded() async throws {
+        let counter = CallCounter()
+        let responseData = Data(repeating: 0, count: 1_000)
+        let cache = ImageCache(
+            session: FakeAPIRequesting(responseData: responseData, counter: counter),
+            diskCache: nil,
+            // Smaller than a single response, so every insert immediately exceeds budget.
+            memoryCacheLimitBytes: 10
+        )
+
+        _ = try await cache.data(for: url)
+        _ = try await cache.data(for: url)
+
+        let callCount = await counter.count
+        XCTAssertEqual(callCount, 2, "an entry over the memory cache's cost limit should be evicted, forcing a re-fetch")
+    }
+
     func testConcurrentRequestsForSameURLShareOneDownload() async throws {
         let counter = CallCounter()
         let gate = Gate()

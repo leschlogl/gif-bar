@@ -10,14 +10,28 @@ public protocol ImageLoading: Sendable {
 /// in-flight download rather than issuing duplicate network calls — this is what makes
 /// re-appearing cells during fast scroll-back free.
 public actor ImageCache: ImageLoading {
+    /// Without this, `NSCache` only evicts under actual system memory pressure — a
+    /// reactive, late backstop rather than a budget. A long scroll session through
+    /// hundreds of grid thumbnails (plus the occasional full-resolution `original`
+    /// rendition pulled in for Copy GIF, sharing this same cache) would otherwise grow
+    /// this unbounded until the system intervenes. 150MB comfortably holds hundreds of
+    /// thumbnails; `cost:` is passed as each entry's actual byte count so eviction is
+    /// driven by real memory use, not entry count.
+    public static let defaultMemoryCacheLimitBytes = 150 * 1024 * 1024
+
     private let session: APIRequesting
     private let diskCache: DiskImageCaching?
     private let memoryCache = NSCache<NSURL, NSData>()
     private var inFlightTasks: [URL: Task<Data, Error>] = [:]
 
-    public init(session: APIRequesting = URLSession.shared, diskCache: DiskImageCaching? = FileManagerDiskImageCache()) {
+    public init(
+        session: APIRequesting = URLSession.shared,
+        diskCache: DiskImageCaching? = FileManagerDiskImageCache(),
+        memoryCacheLimitBytes: Int = ImageCache.defaultMemoryCacheLimitBytes
+    ) {
         self.session = session
         self.diskCache = diskCache
+        memoryCache.totalCostLimit = memoryCacheLimitBytes
     }
 
     public func data(for url: URL) async throws -> Data {
@@ -43,7 +57,7 @@ public actor ImageCache: ImageLoading {
         defer { inFlightTasks[url] = nil }
 
         let data = try await task.value
-        memoryCache.setObject(data as NSData, forKey: url as NSURL)
+        memoryCache.setObject(data as NSData, forKey: url as NSURL, cost: data.count)
         return data
     }
 }
