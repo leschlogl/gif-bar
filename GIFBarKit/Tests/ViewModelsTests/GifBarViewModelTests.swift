@@ -286,29 +286,15 @@ final class GifBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.gifs.count, 8)
         XCTAssertTrue(viewModel.hasMore)
 
-        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs.last!)
+        viewModel.loadNextPageIfNeeded()
         try await waitForBackgroundTask()
         XCTAssertEqual(viewModel.gifs.count, 16)
         XCTAssertTrue(viewModel.hasMore)
 
-        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs.last!)
+        viewModel.loadNextPageIfNeeded()
         try await waitForBackgroundTask()
         XCTAssertEqual(viewModel.gifs.count, 18)
         XCTAssertFalse(viewModel.hasMore)
-    }
-
-    func testLoadNextPageIfNeededOnlyTriggersForTheLastItem() async throws {
-        let spy = SpyGifProviding(wrapping: MockGifProvider(latency: .zero))
-        let viewModel = makeViewModel(provider: spy)
-        await viewModel.onAppear()
-        XCTAssertEqual(viewModel.gifs.count, 8)
-
-        let callsBefore = spy.trendingCallCount
-        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs[viewModel.gifs.count - 2])
-        try await waitForBackgroundTask()
-
-        XCTAssertEqual(spy.trendingCallCount, callsBefore, "should only prefetch once the last item actually appears, not before")
-        XCTAssertEqual(viewModel.gifs.count, 8)
     }
 
     func testStalePaginationFetchDoesNotCorruptResultsAfterNewSearch() async throws {
@@ -318,7 +304,7 @@ final class GifBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.gifs.count, 8)
 
         gated.gatedOffset = 8
-        viewModel.loadNextPageIfNeeded(currentItem: viewModel.gifs.last!)
+        viewModel.loadNextPageIfNeeded()
         try await waitForBackgroundTask()
         XCTAssertTrue(viewModel.isLoadingMore, "pagination fetch should be in flight, parked on the gate")
 

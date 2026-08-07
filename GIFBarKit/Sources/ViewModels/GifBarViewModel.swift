@@ -100,9 +100,10 @@ public final class GifBarViewModel {
         reloadNow()
     }
 
-    public func loadNextPageIfNeeded(currentItem: Gif) {
+    /// Called when the grid's footer sentinel (below both masonry columns) scrolls into
+    /// view — see `Views.GifGridView`.
+    public func loadNextPageIfNeeded() {
         guard tab == .trending, hasMore, !isLoading, !isLoadingMore else { return }
-        guard gifs.last?.id == currentItem.id else { return }
         loadNextPage()
     }
 
