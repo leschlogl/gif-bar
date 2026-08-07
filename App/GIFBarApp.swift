@@ -27,7 +27,7 @@ struct GIFBarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("GIFBar", systemImage: "photo.on.rectangle.angled") {
+        MenuBarExtra("GIFBar", image: "MenuBarIcon") {
             RootView(viewModel: viewModel)
         }
         .menuBarExtraStyle(.window)
