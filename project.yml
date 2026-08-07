@@ -56,5 +56,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.leschlogl.GIFBarUITests
+        # Config/Base.xcconfig sets PRODUCT_NAME = GIFBar project-wide (applied to every
+        # target via the top-level configFiles:), which otherwise makes this target's
+        # module collide with the app's own GIFBar.swiftmodule at link time ("Multiple
+        # commands produce ... GIFBar.swiftmodule").
+        PRODUCT_NAME: $(TARGET_NAME)
     dependencies:
       - target: GIFBar
